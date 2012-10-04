@@ -1,3 +1,5 @@
+{% load static %}
+{% get_static_prefix as STATIC_URL %}
 <!DOCTYPE html>
 <html>
 <head>
@@ -41,22 +43,6 @@
     <!-- Shim to make HTML5 elements usable in older Internet Explorer versions -->
     <!--[if lt IE 9]><script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
     
-    <!-- Some CSS for the jQuery uploader UI -->
-    <!-- link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.13/themes/base/jquery-ui.css"
-          id="theme"-->
-    <!--link href="/static/css/jquery.fileupload-ui.css" rel="stylesheet"-->
-
-    <!-- jQuery Javascript -->
-	<!--
-    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>
-    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.14/jquery-ui.min.js"></script>
-	-->
-
-    <!-- jQuery Templates -->
-	<!--
-    <script src="http://ajax.aspnetcdn.com/ajax/jquery.templates/beta1/jquery.tmpl.min.js"></script>
-	-->
-
 <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
 <!-- The jQuery UI widget factory, can be omitted if jQuery UI is already included -->
 <script src="{{ STATIC_URL }}js/vendor/jquery.ui.widget.js"></script>
@@ -77,55 +63,6 @@
 <script src="{{ STATIC_URL }}js/jquery.fileupload-fp.js"></script>
 <!-- The File Upload user interface plugin -->
 <script src="{{ STATIC_URL }}js/jquery.fileupload-ui.js"></script>
-
-<!-- The main application script -->
-<!--
-<script src="{{ STATIC_URL }}js/main.js"></script>
--->
-
-<script type="text/javascript">
-    $(function() {
-        'use strict';
-
-        // Initialize the jQuery File Upload widget
-        // For a complete option reference go to
-        // https://github.com/blueimp/jQuery-File-Upload
-        $('#fileupload').fileupload({
-            // this formData is neccessary to pass the csrf and pass uid to django
-            formData: [
-                { name: "uid", value: "{{ uid }}"},
-                { name: "csrfmiddlewaretoken", value: "{{ csrf_token }}"}
-            ],
-            maxFileSize: {{ maxfilesize }},
-            minFileSize: {{ minfilesize }},
-            sequentialUploads: true
-        });
-
-        // Load existing files
-        $.getJSON($('#fileupload form').prop('action'), function (files) {
-            var fu = $('#fileupload').data('fileupload');
-            fu._adjustMaxNumberOfFiles(-files.length);
-            fu._renderDownload(files)
-                    .appendTo($('#fileupload .files'))
-                    .fadeIn(function () {
-                        // Fix for IE7 and lower:
-                        $(this).show();
-                    });
-        });
-
-        // Open download dialogs via iframes,
-        // to prevent aborting current uploads
-        $('#fileupload .files a:not([target^=_blank])').live('click', function (e) {
-            e.preventDefault();
-            $('<iframe style="display:none;"></iframe>')
-                    .prop('src', this.href)
-                    .appendTo('body');
-        });
-
-    });
-</script>
-
-
     <!-- Fixing CSRF in Django for jQuery -->
     <script src="/static/js/jquery_fix_csrf.js"></script>
 
@@ -309,6 +246,55 @@
     </tr>
 {{ open_tv }} } {{ close_tv }}
 </script>
+
+<!-- The main application script -->
+<!--
+<script src="{{ STATIC_URL }}js/main.js"></script>
+-->
+
+<script type="text/javascript">
+    $(function() {
+        'use strict';
+
+        // Initialize the jQuery File Upload widget
+        // For a complete option reference go to
+        // https://github.com/blueimp/jQuery-File-Upload
+        $('#fileupload').fileupload({
+            // this formData is neccessary to pass the csrf and pass uid to django
+            formData: [
+                { name: "uid", value: "{{ uid }}"},
+                { name: "csrfmiddlewaretoken", value: "{{ csrf_token }}"}
+            ],
+            maxFileSize: {{ maxfilesize }},
+            minFileSize: {{ minfilesize }},
+            sequentialUploads: true
+        });
+
+        // Load existing files
+        $.getJSON($('#fileupload form').prop('action'), function (files) {
+            var fu = $('#fileupload').data('fileupload');
+            fu._adjustMaxNumberOfFiles(-files.length);
+            fu._renderDownload(files)
+                    .appendTo($('#fileupload .files'))
+                    .fadeIn(function () {
+                        // Fix for IE7 and lower:
+                        $(this).show();
+                    });
+        });
+
+        // Open download dialogs via iframes,
+        // to prevent aborting current uploads
+        $('#fileupload .files a:not([target^=_blank])').live('click', function (e) {
+            e.preventDefault();
+            $('<iframe style="display:none;"></iframe>')
+                    .prop('src', this.href)
+                    .appendTo('body');
+        });
+
+    });
+</script>
+
+
 
 <!-- The XDomainRequest Transport is included for cross-domain file deletion for IE8+ -->
 <!--[if gte IE 8]><script src="{{ STATIC_URL }}js/cors/jquery.xdr-transport.js"></script><![endif]-->
