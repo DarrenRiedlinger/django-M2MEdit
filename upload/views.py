@@ -222,8 +222,8 @@ def Upload(request):
             "uid": uuid.uuid4(),
             # these two are necessary to generate the jQuery templates
             # they have to be included here since they conflict with django template system
-            "open_tv": u'{{',
-            "close_tv": u'}}',
+            "open_tv": u'{%',
+            "close_tv": u'%}',
             # some of the parameters to be checked by javascript
             "maxfilesize": options["maxfilesize"],
             "minfilesize": options["minfilesize"],
