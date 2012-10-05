@@ -54,14 +54,15 @@ def Upload(request):
     #   and check validity late in the code
     options = {
         # the maximum file size (must be in bytes)
-        "maxfilesize": 2 * 2 ** 20, # 2 Mb
+        "maxfilesize": 100 * 2 ** 20, # 100 Mb
         # the minimum file size (must be in bytes)
-        "minfilesize": 1 * 2 ** 10, # 1 Kb
+        "minfilesize": 1 * 2 ** 1, # 1 bit
         # the file types which are going to be allowed for upload
         #   must be a mimetype
-        "acceptedformats": (
+        "acceptedformats": ( # NB.  Currently disabled file checks below
             "image/jpeg",
             "image/png",
+            "application/msword",
             )
     }
 
@@ -113,8 +114,8 @@ def Upload(request):
             if file.size < options["minfilesize"]:
                 error = "minFileSize"
                 # allowed file type
-            if file.content_type not in options["acceptedformats"]:
-                error = "acceptFileTypes"
+#            if file.content_type not in options["acceptedformats"]:
+#                error = "acceptFileTypes"
 
 
             # the response data which will be returned to the uploader as json
