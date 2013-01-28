@@ -54,14 +54,15 @@ def Upload(request):
     #   and check validity late in the code
     options = {
         # the maximum file size (must be in bytes)
-        "maxfilesize": 2 * 2 ** 20, # 2 Mb
+        "maxfilesize": 100 * 2 ** 20, # 100 Mb
         # the minimum file size (must be in bytes)
-        "minfilesize": 1 * 2 ** 10, # 1 Kb
+        "minfilesize": 1 * 2 ** 1, # 1 bit
         # the file types which are going to be allowed for upload
         #   must be a mimetype
-        "acceptedformats": (
+        "acceptedformats": ( # NB.  Currently disabled file checks below
             "image/jpeg",
             "image/png",
+            "application/msword",
             )
     }
 
@@ -113,8 +114,8 @@ def Upload(request):
             if file.size < options["minfilesize"]:
                 error = "minFileSize"
                 # allowed file type
-            if file.content_type not in options["acceptedformats"]:
-                error = "acceptFileTypes"
+#            if file.content_type not in options["acceptedformats"]:
+#                error = "acceptFileTypes"
 
 
             # the response data which will be returned to the uploader as json
@@ -222,8 +223,8 @@ def Upload(request):
             "uid": uuid.uuid4(),
             # these two are necessary to generate the jQuery templates
             # they have to be included here since they conflict with django template system
-            "open_tv": u'{{',
-            "close_tv": u'}}',
+            "open_tv": u'{%',
+            "close_tv": u'%}',
             # some of the parameters to be checked by javascript
             "maxfilesize": options["maxfilesize"],
             "minfilesize": options["minfilesize"],
