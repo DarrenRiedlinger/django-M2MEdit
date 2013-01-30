@@ -13,8 +13,48 @@ from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseRedire
 # for os manipulations
 import os
 
+from upload.forms import FileUploadForm
+from upload.models import FileUpload
+from django.shortcuts import render_to_response
+from django.template import RequestContext
+from django.core.urlresolvers import reverse
 
-def Upload(request):
+def new_upload(request):
+    try:
+        uid= request.session['file_upload_key']
+    except KeyError:
+        return HttpResponse("Error.  You've either tried to access this page",
+                " directly, or you do not have cookies enabled. If it is the ",
+                "latter, please enable cookies and try again.")
+
+    if request.method == 'POST':
+        form = FileUploadForm(request.POST, request.FILES)
+        if form.is_valid():
+            newfile = FileUpload(uploaded_file = request.FILES['file_upload'])
+            # After save, uploaded_file.name gets appended to path and possibly
+            # gets appended with a version number.  We're saving the original 
+            # filename here for easy acess without having to strip the path and
+            # version number.
+            # TODO: Do I need to escape the original filename?
+            newfile.filename = newfile.uploaded_file.name
+            newfile.uid = request.session['file_upload_key']
+            newfile.save()
+
+            # Redirect to the document list after POST
+            return HttpResponseRedirect(reverse('upload.views.new_upload'))
+
+    if request.method == 'GET':
+        form = FileUploadForm()
+
+    files = FileUpload.objects.filter(uid=request.session['file_upload_key'])
+    
+    return render_to_response(
+            'new_upload.html',
+            {'files': files, 'form': form},
+            context_instance=RequestContext(request)
+            )
+    
+def upload(request):
     """
     
     ## View for file uploads ##

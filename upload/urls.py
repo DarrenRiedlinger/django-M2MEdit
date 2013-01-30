@@ -10,6 +10,7 @@ urlpatterns = patterns('upload.views',
     # If you want you can expand this so each action of the uploader
     #   will have it's own url. Now a single view is responsible for
     #   distinguishing what it is suppose to do.
-    (r'^', 'Upload'),
+    url('^new_upload$', 'new_upload', name='new_upload'),
+    (r'^', 'upload'),
 
 )

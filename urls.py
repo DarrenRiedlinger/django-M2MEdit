@@ -1,5 +1,6 @@
 from django.conf.urls.defaults import patterns, include, url
-from django.contrib.staticfiles.urls import staticfiles_urlpatterns
+from django.conf import settings
+from django.contrib.staticfiles.urls import staticfiles_urlpatterns, static
 
 # Uncomment the next two lines to enable the admin:
 # from django.contrib import admin
@@ -18,6 +19,8 @@ urlpatterns = patterns('',
 
     # For the Django Jquery Upload
     (r'^upload/', include('upload.urls')),
+    # Demo app showing usage of upload
+    (r'^demoapp/', include('demoapp.urls')),
     #(r'^upload/', 'upload.views.Upload')),
 
     #(r'^studyview/', include('studyview.urls')),
@@ -25,3 +28,5 @@ urlpatterns = patterns('',
 )
 
 urlpatterns += staticfiles_urlpatterns()
+# Note: For development only.  Don't deploy.  TODO
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

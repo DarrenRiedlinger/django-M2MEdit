@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+		<head>
+				<meta charset="utf-8">
+				<title>Example App using Djanog multi-file-uploader</title>   
+				</head>
+				<body>
+						<!-- Upload form. Note enctype attribute! -->
+						<form action="{% url demoapp %}" method="post">
+								{% csrf_token %}
+								{{ form.as_p }}
+								<p>
+								<a href={% url upload.views.new_upload %} target="_blank">Attach some files</a>
+								</p>
+						<input type="submit" value="Submit"/>
+						</form>
+						<!-- List of uploaded documents -->
+						{% for instance in model_instances %}
+						<ul>
+								<li>{{ instance.sometext }}</li>
+								{% for attachment in instance.attachments.all %}
+								<ul>
+
+										<li><a href="{{ attachment.uploaded_file.url }}">{{ attachment.filename }}</a></li>
+								</ul>
+								{% empty %}
+								<p></p>
+								{% endfor %}
+						</ul>
+						{% empty %}
+						<p>No documents.</p>
+						{% endfor %}
+
+				</body>
+		</html> 
+
