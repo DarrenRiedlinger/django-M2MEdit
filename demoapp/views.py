@@ -61,8 +61,6 @@ def demo(request):
             'demoapp.html',
             {'model_instances': model_instances,
                 'form': form,
-                'open_tv': u'{%',
-                'close_tv': u'%}',
                 'maxfilesize': options['maxfilesize'],
                 'minfilesize': options['minfilesize'],
                 },
