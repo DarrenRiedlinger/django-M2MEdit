@@ -30,16 +30,29 @@ def new_upload(request):
     if request.method == 'POST':
         form = FileUploadForm(request.POST, request.FILES)
         if form.is_valid():
+            # TODO: Will need to store max size and mimetyple
+            # in session, and then verify here
+            error = False
             newfile = FileUpload(uploaded_file = request.FILES['file_upload'])
             # After save, uploaded_file.name gets appended to path and possibly
-            # gets appended with a version number.  We're saving the original 
+            # gets appended with a version number.  We're saving the original
             # filename here for easy acess without having to strip the path and
             # version number.
             # TODO: Do I need to escape the original filename?
             newfile.filename = newfile.uploaded_file.name
             newfile.uid = request.session['file_upload_key']
             newfile.save()
+            if request.is_ajax():
+                response_data = {
+                    "name" : newfile.filename,
+                    "size" : newfile.uploaded_file.size,
+                    "type" : request.FILES['file_upload'].content_type
+                }
+                # Append Errors
 
+                response_data = simplejson.dumps([response_data])
+                return HttpResponse(response_data,
+                        mimetype='application/json')
             # Redirect to the document list after POST
             return HttpResponseRedirect(reverse('upload.views.new_upload'))
 
@@ -47,16 +60,16 @@ def new_upload(request):
         form = FileUploadForm()
 
     files = FileUpload.objects.filter(uid=request.session['file_upload_key'])
-    
+
     return render_to_response(
             'new_upload.html',
             {'files': files, 'form': form},
             context_instance=RequestContext(request)
             )
-    
+
 def upload(request):
     """
-    
+
     ## View for file uploads ##
 
     It does the following actions:

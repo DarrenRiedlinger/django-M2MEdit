@@ -3,5 +3,5 @@
 *.swp
 *~
 djangoupload.db
-
+media/*
 *.swo
