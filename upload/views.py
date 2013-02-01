@@ -52,7 +52,7 @@ def new_upload(request):
 
                 response_data = simplejson.dumps([response_data])
 
-                response_type = 'application/json'
+                response_type = 'text/html'
                 # QUIRK HERE
                 # in jQuey uploader, when it falls back to uploading using iFrames
                 # the response content type has to be text/html
@@ -62,8 +62,8 @@ def new_upload(request):
                 # they have different set of HTTP_ACCEPT values
                 # so if the text/html is present, file was uploaded using jFrame because
                 # that value is not in the set when uploaded by XHR
-                if "text/html" in request.META["HTTP_ACCEPT"]:
-                    response_type = "text/html"
+                if 'application/json'  in request.META["HTTP_ACCEPT"]:
+                    response_type = "application/json"
 
                 return HttpResponse(response_data,
                         mimetype=response_type)
