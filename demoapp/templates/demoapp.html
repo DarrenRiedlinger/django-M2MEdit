@@ -194,7 +194,7 @@
 					$('#fileupload').fileupload({
 						// this formdata is neccessary to pass the csrf and pass uid to django
 					formdata: [
-					{ name: "csrfmiddlewaretoken", value: "{{ csrf_token }}"},
+					{ name: "csrfmiddlewaretoken", value: $('input[name=csrfmiddlewaretoken]').val() },
 					],
 					maxfilesize: {{ maxfilesize }},
 					minfilesize: {{ minfilesize }},
