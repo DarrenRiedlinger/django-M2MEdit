@@ -43,36 +43,37 @@ def new_upload(request):
             newfile.uid = request.session['file_upload_key']
             newfile.save()
 
-            # if request.is_ajax():
-            # Fails for IE (iframe transport)
-            response_data = {
-                "name" : newfile.filename,
-                "size" : newfile.uploaded_file.size,
-                "type" : request.FILES['file_upload'].content_type
-            }
-            # Append Errors
+            # since iframe won't be ajax, also test for our querystring
+            if request.is_ajax() or \
+                    request.GET.get('use_ajax', 'false') == 'true':
+                response_data = {
+                    "name" : newfile.filename,
+                    "size" : newfile.uploaded_file.size,
+                    "type" : request.FILES['file_upload'].content_type
+                }
+                # Append Errors
 
-            response_data = simplejson.dumps([response_data])
+                response_data = simplejson.dumps([response_data])
 
-            response_type = 'text/html'
-            # QUIRK HERE
-            # in jQuey uploader, when it falls back to uploading using iFrames
-            # the response content type has to be text/html
-            # if json will be send, error will occur
-            # if iframe is sending the request, it's headers are a little different compared
-            # to the jQuery ajax request
-            # they have different set of HTTP_ACCEPT values
-            # so if the text/html is present, file was uploaded using jFrame because
-            # that value is not in the set when uploaded by XHR
-            if 'application/json'  in request.META["HTTP_ACCEPT"]:
-                response_type = "application/json"
+                response_type = 'text/html'
+                # QUIRK HERE
+                # in jQuey uploader, when it falls back to uploading using iFrames
+                # the response content type has to be text/html
+                # if json will be send, error will occur
+                # if iframe is sending the request, it's headers are a little different compared
+                # to the jQuery ajax request
+                # they have different set of HTTP_ACCEPT values
+                # so if the text/html is present, file was uploaded using jFrame because
+                # that value is not in the set when uploaded by XHR
+                if 'application/json'  in request.META["HTTP_ACCEPT"]:
+                    response_type = "application/json"
 
-            return HttpResponse(response_data,
-                    mimetype=response_type)
+                return HttpResponse(response_data,
+                        mimetype=response_type)
 
-            # else: # Normal HTML request
-                # Redirect to the document list after POST
-            #    return HttpResponseRedirect(reverse('upload.views.new_upload'))
+            else: # Normal HTML request
+               # Redirect to the document list after POST
+               return HttpResponseRedirect(reverse('upload.views.new_upload'))
 
     if request.method == 'GET':
         form = FileUploadForm()
