@@ -178,7 +178,7 @@
 
 		<!-- the main application script -->
 		<!--
-		<script src="{{ static_url }}js/main.js"></script>
+		<script src="{{ STATIC_URL }}js/main.js"></script>
 		-->
 
 		<script type="text/javascript">
@@ -196,9 +196,9 @@
 					formdata: [
 					{ name: "csrfmiddlewaretoken", value: $('input[name=csrfmiddlewaretoken]').val() },
 					],
-					maxfilesize: {{ maxfilesize }},
-					minfilesize: {{ minfilesize }},
-					sequentialuploads: true
+					maxFileSize: {{ maxfilesize }},
+					minFileSize: {{ minfilesize }},
+					sequentialUploads: true
 					});
 
 					// Load existing files
@@ -216,10 +216,10 @@
 					// open download dialogs via iframes,
 					// to prevent aborting current uploads
 					$('#fileupload .files a:not([target^=_blank])').live('click', function (e) {
-							e.preventdefault();
+							e.preventDefault();
 							$('<iframe style="display:none;"></iframe>')
 							.prop('src', this.href)
-							.appendto('body');
+							.appendTo('body');
 							});
 					
 					});
@@ -228,7 +228,7 @@
 
 
 <!-- the xdomainrequest transport is included for cross-domain file deletion for ie8+ -->
-<!--[if gte ie 8]><script src="{{ static_url }}js/cors/jquery.xdr-transport.js"></script><![endif]-->
+<!--[if gte ie 8]><script src="{{ STATIC_URL }}js/cors/jquery.xdr-transport.js"></script><![endif]-->
 
 
 				</body>
