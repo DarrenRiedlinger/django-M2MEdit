@@ -11,6 +11,7 @@ urlpatterns = patterns('upload.views',
     #   will have it's own url. Now a single view is responsible for
     #   distinguishing what it is suppose to do.
     # url('^new_upload$', 'new_upload', name='new_upload'),
-    url(r'^(?P<file_set_pk>\d+)/$', 'edit_file_set', name='edit_file_set'),
+
+    # url(r'^(?P<file_set_pk>\d+)/$', 'edit_file_set', name='edit_file_set'),
     #(r'^', 'upload'),
 )
