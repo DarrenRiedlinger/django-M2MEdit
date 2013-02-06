@@ -118,6 +118,9 @@ class FileSetForm(forms.Form):
             except DoesNotExist:
                 raise ImproperlyConfigured('Invalid file set pk')
             self.fields['current_files'] = ModelMultipleDeleteField(
+                        # TODO: Might be able to use a custom model field and then overide
+                        # the model field's formfield method to use our custom queryset and
+                        # widget
                         queryset=file_set.files.all(),
                         required=False,
                         widget=CheckboxSelectFiles,
@@ -133,3 +136,4 @@ class FileSetForm(forms.Form):
     # not known until runtime
     #
     # existing_files = None
+

@@ -3,6 +3,7 @@ from django.core.files.storage import default_storage
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes import generic
+from upload.fields import MultiUploaderField
 
 #try:
 #    upload_folder = settings.FILE_UPLOAD_FOLDER + '/'
@@ -30,9 +31,62 @@ class File(models.Model):
 class FileSet(models.Model):
     """
     A set of related files linked to a content_type object
+    
+    Should be assigned to a OneToOneField on your source model.
+    Implemented as a sepate class (rather than a m2m on the source
+    model) to allow saving of the FileSet before the source model instance
+    is saved.  This design also allows us to abstract some of the messy parts
+    of rendering the FileSet form correctly 
+    N.B. A GenericForeignKey implementation was abandoned as it would not
+    (directly) support multiple fields linking to FileSet on the same model, ie:
+    class Foo(Model):
+        attachments = GenericRelation(FileSet)
+        final_reports = GenericRelation(FileSet)
     """
     files = models.ManyToManyField(File)
-    content_type = models.ForeignKey(ContentType, null=True)
-    object_id = models.PositiveIntegerField(null=True)
-    content_object = generic.GenericForeignKey('content_type', 'object_id')
+    
+    """ 
+    OneToOneField Reverse helpers
+
+    The linked_instance property provides a simple method
+    of determining which is the correct relationship to follow (since FileSet
+    will end up having reverse relationships for every model that points to
+    FileSet).
+    """       
+    @classmethod
+    def _get_121s(cls):
+        """
+        Return all fields that are the reverse of a OneToOne Relation
+        """
+        one21s = []
+        for k,v in cls.__dict__.iteritems():
+            if isinstance(v, SingleRelatedObjectDescriptor):
+                one21s.append(k)
+        return one21s
+   
+    @property
+    def linked_instance(self):
+        """
+        Return which reverse OneToOne field is used on this instance (there
+        will be at most one valid reverse field).
+        """
+        # TODO: some form of caching to reduce unecessary queries
+        for field in self._get_121s():
+            try:
+                return(getattr(self, field))
+            except ObjectDoesNotExist:
+                pass
+        return None
+    
+    def __unicode__(self):
+        return 'FileSet-%s' % self.pk
+
+class FileSetField(models.OneToOneField):
+        # A OneToOneField to FileSet with a default widget
+
+    def formfield(self, **kwargs):
+        # see: https://docs.djangoproject.com/en/1.4/howto/custom-model-fields/#specifying-the-form-field-for-a-model-field
+        defaults = {'form_class': MultiUploaderField}
+        defaults.update(kwargs)
+        return super(FileSetField, self).formfield(**defaults)
 

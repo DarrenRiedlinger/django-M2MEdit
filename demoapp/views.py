@@ -2,6 +2,7 @@ from django.http import HttpResponseRedirect
 from django.core.urlresolvers import reverse
 from django.template import RequestContext
 from django.shortcuts import render_to_response
+from django.views.generic import ListView, DetailView, DeleteView, UpdateView, CreateView
 
 from demoapp.forms import DemoForm
 from demoapp.models import DemoModel
@@ -10,8 +11,27 @@ from upload.models import FileSet
 import uuid
 # Create your views here.
 
-class DemoCrudMixin(object):
-    model =
+class CrudMixin(object):
+    model = DemoModel
+    def get_sucess_url(self):
+        return reverse('crud_list')
+    def get_queryset(self):
+        return self.model.objects.all()
+    
+class CrudListView(CrudMixin, ListView):
+    pass
+
+class CrudDetailView(CrudMixin, DetailView):
+    pass
+
+class CrudCreateView(CrudMixin, CreateView):
+    pass
+
+class CrudDeleteView(CrudMixin, DeleteView):
+    pass
+
+class CrudUpdateView(CrudMixin, UpdateView):
+    pass
 
 def demo(request):
     if request.method == 'POST':
