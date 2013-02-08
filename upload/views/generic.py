@@ -29,9 +29,7 @@ class BaseMUCreateView(ModelFormMixin, ProcessFormView):
                     isinstance(x, FileSetField)]
                 )
         for field in self.object._meta.fields:
-            # High-entropy unique string (instead of uuid)
-            unique_id = get_random_string(length=13)
-            unique_id = 42
+            unique_id = get_random_string(length=14)
             setattr(self.object, field.attname, unique_id)
         return super(BaseMUCreateView, self).get(request, *args, **kwargs)
 
