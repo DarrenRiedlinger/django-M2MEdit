@@ -3,7 +3,6 @@ from django.core.urlresolvers import reverse
 from django.template import RequestContext
 from django.shortcuts import render_to_response
 from django.views.generic import ListView, DetailView, DeleteView, UpdateView, CreateView
-from upload.views.generic import MUCreateView
 from demoapp.forms import DemoForm
 from demoapp.models import DemoModel
 from upload.models import FileSet
@@ -24,7 +23,7 @@ class CrudListView(CrudMixin, ListView):
 class CrudDetailView(CrudMixin, DetailView):
     pass
 
-class CrudCreateView(CrudMixin, MUCreateView):
+class CrudCreateView(CrudMixin, CreateView):
     pass
 
 class CrudDeleteView(CrudMixin, DeleteView):

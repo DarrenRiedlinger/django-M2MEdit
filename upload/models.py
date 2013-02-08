@@ -56,7 +56,8 @@ class FileSet(models.Model):
     @classmethod
     def _get_121s(cls):
         """
-        Return all fields that are the reverse of a OneToOne Relation
+        Return all fields that were added to the class as reverses on a
+        OneToOne Relation
         """
         one21s = []
         for k,v in cls.__dict__.iteritems():
@@ -67,8 +68,9 @@ class FileSet(models.Model):
     @property
     def linked_instance(self):
         """
-        Return which reverse OneToOne field is used on this instance (there
-        will be at most one valid reverse field).
+        Return which reverse OneToOne field is used on this instance (a OneToOne 
+        field is constrained such that there can only be at most most one valid 
+        reverse field per instance).
         """
         # TODO: some form of caching to reduce unecessary queries
         for field in self._get_121s():
@@ -82,10 +84,11 @@ class FileSet(models.Model):
         return 'FileSet-%s' % self.pk
 
 class FileSetField(models.OneToOneField):
-        # A OneToOneField to FileSet with a default widget
+    """
+    A OneToOneField to FileSet whose fomrclass defaults to a MultiUploaderField
+    """
 
     def formfield(self, **kwargs):
-        # see: https://docs.djangoproject.com/en/1.4/howto/custom-model-fields/#specifying-the-form-field-for-a-model-field
         defaults = {'form_class': MultiUploaderField}
         defaults.update(kwargs)
         return super(FileSetField, self).formfield(**defaults)
