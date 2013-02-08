@@ -23,9 +23,9 @@ def new_upload(request):
     try:
         uid= request.session['file_upload_key']
     except KeyError:
-        return HttpResponse("Error.  You've either tried to access this page",
+        return HttpResponse(("Error.  You've either tried to access this page",
                 " directly, or you do not have cookies enabled. If it is the ",
-                "latter, please enable cookies and try again.")
+                "latter, please enable cookies and try again."))
 
     if request.method == 'POST':
         form = FileUploadForm(request.POST, request.FILES)
