@@ -1,4 +1,5 @@
 from django.conf.urls.defaults import *
+from upload.views import CreateOrUpdate
 
 urlpatterns = patterns('upload.views',
 
@@ -14,4 +15,9 @@ urlpatterns = patterns('upload.views',
 
     # url(r'^(?P<file_set_pk>\d+)/$', 'edit_file_set', name='edit_file_set'),
     #(r'^', 'upload'),
+    url(
+        regex='^fileset/(?P<pk>\w+)/$',
+        view=CreateOrUpdate.as_view(),
+        name='edit_fileset',
+       ),
 )

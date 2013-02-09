@@ -110,18 +110,14 @@ class CheckboxSelectFiles(forms.CheckboxSelectMultiple):
         return mark_safe(u'\n'.join(output))
 
 class FileSetForm(forms.Form):
-    def __init__(self, file_set_pk=None, *args, **kwargs):
+    def __init__(self, instance=None, *args, **kwargs):
         super(FileSetForm, self).__init__(*args, **kwargs)
-        if file_set_pk:
-            try:
-                file_set = FileSet.objects.get(pk=file_set_pk)
-            except DoesNotExist:
-                raise ImproperlyConfigured('Invalid file set pk')
+        if instance:
             self.fields['current_files'] = ModelMultipleDeleteField(
                         # TODO: Might be able to use a custom model field and then overide
                         # the model field's formfield method to use our custom queryset and
                         # widget
-                        queryset=file_set.files.all(),
+                        queryset=instance.files.all(),
                         required=False,
                         widget=CheckboxSelectFiles,
                         )

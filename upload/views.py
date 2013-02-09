@@ -12,7 +12,7 @@ from django.core.context_processors import csrf
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseRedirect
 # for os manipulations
 import os
-
+from django.views.generic import CreateView
 from django.utils.translation import ugettext as _
 from django.http import Http404
 from django.core.signing import BadSignature, SignatureExpired
@@ -30,6 +30,96 @@ from sorl.thumbnail import get_thumbnail
 from functools import partial
 
 COOKIE_LIFETIME = getattr(settings, 'UPLOAD_COOKIE_LIFETIME', 300)
+
+
+class FileSetMixin(object):
+    """
+    Mixin for generic views
+    """
+    model = FileSet
+    form_class = FileSetForm
+
+    #def get_form_class(self):
+    #    if self.object:
+    #        return partial(FileSetForm, self.object.pk)
+    #    return partial(FileSetForm, None)
+
+    def get_sucess_url(self):
+        # There is no success url, we just redirect back to GET
+        return reverse('edit_fileset', kwargs=self.kwargs)
+
+    def get_queryset(self):
+        return FileSet.objects.all()
+
+    def get(self, request, *args, **kwargs):
+        # verify cookie matches pk kwarg
+        # replace uuid with pk if we've set pk in the cookie
+        try:
+            self.object = self.get_object()
+        except AttributeError:
+            self.object = None
+        form_class = self.get_form_class()
+        form = self.get_form(form_class)
+        return self.render_to_response(self.get_context_data(form=form))
+
+    def post(self, request, *args, **kwargs):
+        # verify cookie 
+        try:
+            self.object = self.get_object()
+        except AttributeError:
+            self.object = None
+        form_class = self.get_form_class() 
+        form = self.get_form(form_class)
+        if form.is_valid():
+            self.save_form(form)
+            return self.form_valid(form)
+        else:
+            return self.form_invalid(form)
+
+    def save_form(self, form):
+        # TODO: Will need to store max size and mimetype
+        # in session, and then verify here
+        error = False
+        if self.object is None:
+            self.object = FileSet()
+            self.object.save()
+        else:
+            ([self.object.files.remove(f.pk) for f in
+                form.cleaned_data['current_files']])
+        if self.request.FILES:
+            newfile = File(document=self.request.FILES['file_upload'])
+            # After save, document.name gets appended to path and possibly
+            # gets appended with a version number.  We're saving the original
+            # filename here for easy acess without having to strip the path and
+            # version number.
+            # TODO: Do I need to escape the original filename?
+            newfile.filename = newfile.document.name
+            newfile.save()
+            try:
+                image = get_thumbnail(newfile.document, "80x80", quality=50)
+                newfile.thumb_url = image.url
+                newfile.save()
+            except (IOError, OverflowError):
+                # Image not recognized by sorl
+                pass
+
+            self.object.files.add(newfile)
+        self.object.save()
+
+    def form_valid(self, form):
+        response = HttpResponseRedirect(self.get_sucess_url())
+        # update cookie
+        return response
+        
+    def form_invalid(self, form):
+        response = super(FileSetMixin, self).form_invalid(form)
+        # update cookie
+        return response
+
+
+class CreateOrUpdate(FileSetMixin, CreateView):
+    pass
+
 
 
 def edit_file_set(request, file_set_pk):

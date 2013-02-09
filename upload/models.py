@@ -14,6 +14,7 @@ from upload.fields import MultiUploaderField
 #
 # Create your models here.
 
+
 class File(models.Model):
     # Model for user uploaded files
     filename = models.CharField(max_length=255)
@@ -27,6 +28,7 @@ class File(models.Model):
 
     def __unicode__(self):
         return self.filename
+
 
 class FileSet(models.Model):
     """
