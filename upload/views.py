@@ -32,6 +32,8 @@ from functools import partial
 COOKIE_LIFETIME = getattr(settings, 'UPLOAD_COOKIE_LIFETIME', 300)
 
 
+
+
 class FileSetMixin(object):
     """
     Mixin for generic views

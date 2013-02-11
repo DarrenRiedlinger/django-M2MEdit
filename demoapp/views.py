@@ -16,6 +16,11 @@ class CrudMixin(object):
         return reverse('crud_list')
     def get_queryset(self):
         return self.model.objects.all()
+    def get_form(self, form_class):
+        import ipdb; ipdb.set_trace()
+        form = super(CrudMixin, self).get_form(form_class)
+        return form
+
     
 class CrudListView(CrudMixin, ListView):
     pass

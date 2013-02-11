@@ -4,6 +4,9 @@ from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes import generic
 from upload.fields import MultiUploaderField
+from django.db.models.fields.related import SingleRelatedObjectDescriptor
+from django.core.exceptions import ObjectDoesNotExist
+
 
 #try:
 #    upload_folder = settings.FILE_UPLOAD_FOLDER + '/'
