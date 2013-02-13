@@ -5,7 +5,7 @@ from django.shortcuts import render_to_response
 
 from demoapp.forms import DemoForm
 from demoapp.models import DemoModel
-from upload.models import FileUpload
+from upload.models import FileSet
 
 import uuid
 # Create your views here.
@@ -40,7 +40,7 @@ def demo(request):
             model_instance = DemoModel()
             model_instance.sometext = form.cleaned_data['sometext']
             model_instance.save()
-            model_instance.attachments.add(*FileUpload.objects.filter(uid=uid).all())
+            #model_instance.attachments.add(*FileUpload.objects.filter(uid=uid).all())
             model_instance.save()
             try:
                 del request.session['file_upload_key']

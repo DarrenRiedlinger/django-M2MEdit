@@ -13,11 +13,105 @@ from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseRedire
 # for os manipulations
 import os
 
-from upload.forms import FileUploadForm
-from upload.models import FileUpload
-from django.shortcuts import render_to_response
+from django.utils.translation import ugettext as _
+from django.http import Http404
+from django.core.signing import BadSignature, SignatureExpired
+from django.core.exceptions import PermissionDenied, SuspiciousOperation
+
+from upload.forms import FileUploadForm, FileSetForm
+from upload.models import FileSet, File
+from django.shortcuts import render_to_response, render
 from django.template import RequestContext
 from django.core.urlresolvers import reverse
+from django.conf import settings
+
+from functools import partial
+
+COOKIE_LIFETIME = getattr(settings, 'UPLOAD_COOKIE_LIFETIME', 300)
+
+
+def edit_file_set(request, file_set_pk):
+    try:
+        file_set = FileSet.objects.get(pk=file_set_pk)
+    except AttributeError:
+        raise Http404(_("No matching fileset found"))
+    # Make sure user is coming from a view that set the appropriate cookie
+    # try:
+    #     cookie = request.get_signed_cookie('file_set%s' % file_set_pk,
+    #             max_age=COOKIE_LIFETIME, httponly=True)
+    # except KeyError, SignatureExpired:
+    #     raise PermissionDenied(_(("You either tried to acess the page ",
+    #         "directly, your browser does not have cookies enabled, or your ",
+    #         "session has expired. Please press 'back' in your broswer, ensure",
+    #         "that you have cookies enabled and try again")))
+    # except BadSignature:
+    #     raise SuspiciousOperation(_("Cookie Signature Invalid"))
+
+    FileSetInstanceForm = partial(FileSetForm, file_set_pk)
+
+    if request.method == 'POST':
+        import ipdb; ipdb.set_trace()
+        form = FileSetInstanceForm(request.POST, request.FILES)
+        if form.is_valid():
+            # TODO: Will need to store max size and mimetype
+            # in session, and then verify here
+            error = False
+            [file_set.files.remove(f.pk) for f in form.cleaned_data['existing_files']]
+            if request.FILES:
+                newfile = File(document=request.FILES['file_upload'])
+                # After save, document.name gets appended to path and possibly
+                # gets appended with a version number.  We're saving the original
+                # filename here for easy acess without having to strip the path and
+                # version number.
+                # TODO: Do I need to escape the original filename?
+                newfile.filename = newfile.document.name
+                newfile.save()
+                file_set.files.add(newfile)
+                file_set.save()
+
+            # since jquery file_upload iframe transport won't be ajax,
+            # also test for our explicit querystring
+            if request.is_ajax() or request.GET.get('use_ajax', False):
+                response_data = {
+                        "name" : newfile.filename,
+                        "size" : newfile.document.size,
+                        "type" : request.FILES['file_upload'].content_type
+                        }
+                # Append Errors
+
+                response_data = simplejson.dumps([response_data])
+
+                # QUIRK HERE
+                # in jQuey uploader, when it falls back to uploading using iFrames
+                # the response content type has to be text/html
+                # if json will be send, error will occur
+                # if iframe is sending the request, it's headers are a little different compared
+                # to the jQuery ajax request
+                # they have different set of HTTP_ACCEPT values
+                # so if the text/html is present, file was uploaded using jFrame because
+                # that value is not in the set when uploaded by XHR
+                if 'application/json'  in request.META["HTTP_ACCEPT"]:
+                    response_type = "application/json"
+                else:
+                    response_type = 'text/html'
+
+                return HttpResponse(response_data,
+                        mimetype=response_type)
+
+            else: # Normal HTML request
+                # Redirect back to this page after post
+                return HttpResponseRedirect(reverse(
+                    'upload.views.edit_file_set',
+                    kwargs={'file_set_pk': file_set.pk} ))
+    else:
+        form = FileSetInstanceForm()
+
+    return render(request, 'edit_file_set.html',
+        { 'form': form, 'file_set': file_set }
+        )
+
+
+
 
 def new_upload(request):
     try:
@@ -33,13 +127,13 @@ def new_upload(request):
             # TODO: Will need to store max size and mimetyple
             # in session, and then verify here
             error = False
-            newfile = FileUpload(uploaded_file = request.FILES['file_upload'])
-            # After save, uploaded_file.name gets appended to path and possibly
+            newfile = FileUpload(document = request.FILES['file_upload'])
+            # After save, document.name gets appended to path and possibly
             # gets appended with a version number.  We're saving the original
             # filename here for easy acess without having to strip the path and
             # version number.
             # TODO: Do I need to escape the original filename?
-            newfile.filename = newfile.uploaded_file.name
+            newfile.filename = newfile.document.name
             newfile.uid = request.session['file_upload_key']
             newfile.save()
 
@@ -48,7 +142,7 @@ def new_upload(request):
                     request.GET.get('use_ajax', 'false') == 'true':
                 response_data = {
                     "name" : newfile.filename,
-                    "size" : newfile.uploaded_file.size,
+                    "size" : newfile.document.size,
                     "type" : request.FILES['file_upload'].content_type
                 }
                 # Append Errors

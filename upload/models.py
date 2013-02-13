@@ -1,6 +1,8 @@
 from django.db import models
 from django.core.files.storage import default_storage
 from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.contenttypes import generic
 
 #try:
 #    upload_folder = settings.FILE_UPLOAD_FOLDER + '/'
@@ -11,11 +13,26 @@ from django.conf import settings
 #
 # Create your models here.
 
-class FileUpload(models.Model):
+class File(models.Model):
     # Model for user uploaded files
     filename = models.CharField(max_length=255)
-    uploaded_file = models.FileField(upload_to='documents/%Y/%m/%d')
+    document = models.FileField(upload_to='documents/%Y/%m/%d')
+    thumb_url = models.URLField(null=True, blank=True)
     upload_date = models.DateTimeField(auto_now_add=True)
-    # uid used to group together files uploaded from the same request
-    uid = models.CharField(max_length=32)
+
+    @property
+    def url(self):
+        return self.document.url
+
+    def __unicode__(self):
+        return self.filename
+
+class FileSet(models.Model):
+    """
+    A set of related files linked to a content_type object
+    """
+    files = models.ManyToManyField(File)
+    content_type = models.ForeignKey(ContentType, null=True)
+    object_id = models.PositiveIntegerField(null=True)
+    content_object = generic.GenericForeignKey('content_type', 'object_id')
 
