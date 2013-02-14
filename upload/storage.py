@@ -2,7 +2,6 @@ from django.conf import settings
 from django.core.signing import SignatureExpired, BadSignature
 from django.core.exceptions import PermissionDenied, SuspiciousOperation
 import json
-from django.core import signing
 # Mutable, named tuples
 from recordtype import recordtype
 
@@ -127,12 +126,10 @@ class CookieStorage(object):
         if not cookies_enabled:
             raise PermissionDenied(('You must have cookies enabled to access '
                                     'this resource'))
-        
         key = ''.join((self.prefix, key))
         try:
-            cookie = request.COOKIES[key]
-            decoded = signing.loads(cookie, salt=key,
-                                    max_age=self.max_cookie_age)
+            cookie = request.get_signed_cookie(key, salt=key,
+                                               max_age=self.max_cookie_age)
         except KeyError:
             # Kind of annoying. With the optional setting
             # MULTIUPLOADER_COOKIE_LIFETIMe, you can set  the cookies to not
@@ -149,7 +146,7 @@ class CookieStorage(object):
             raise PermissionDenied(('Session has expired, please refresh this '
                                     'page and try again'))
 
-        return FileSetToken(*decoded)
+        return FileSetToken(*json.loads(cookie))
 
     def add(self, tokens, response, request):
         # If session framework is installed, use it's test cookie facilities to
@@ -158,7 +155,7 @@ class CookieStorage(object):
         if getattr(request, 'session', None):
             if not request.session.test_cookie_worked():
                 request.session.set_test_cookie()
-        elif ''.join((self.prefix, 'TEST')) not in request.COOKIES:
+        elif ''.join(self.prefix, 'TEST') not in request.COOKIES:
                 response.set_cookie(key=''.join((self.prefix, 'TEST')),
                                     value='worked')
 
@@ -167,11 +164,11 @@ class CookieStorage(object):
             #pythons cookie class requires an ascii key
             if type(key) == unicode:
                 key = key.encode('ascii')
-            encoded = signing.dumps([v for v in token], salt=key,
-                                    compress=True)
+            encoded = json.dumps([v for v in token])
+            #encoded = json.dumps(token._asdict())
             import ipdb; ipdb.set_trace()
-            response.set_cookie(key=key, value=encoded,
-                                max_age=self.cookie_lifetime)
+            response.set_signed_cookie(key=key, value=encoded, salt=key,
+                                       max_age=self.cookie_lifetime)
 
     def remove(self, tokens, response):
         for token in tokens:
