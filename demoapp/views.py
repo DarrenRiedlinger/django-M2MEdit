@@ -6,20 +6,44 @@ from django.views.generic import ListView, DetailView, DeleteView, UpdateView, C
 from demoapp.forms import DemoForm
 from demoapp.models import DemoModel
 from upload.models import FileSet
-
+from upload.utils import MultiuploadAuthenticator
 import uuid
 # Create your views here.
 
-class CrudMixin(object):
+
+class MultiuploadMixin(object):
+    def get_form(self, form_class):
+        form = super(MultiuploadMixin, self).get_form(form_class)
+        self.authenticator = MultiuploadAuthenticator(self.request,
+                                                      form, self.object)
+        self.authenticator.prep_form()
+        return form
+
+    def get(self, request, *args, **kwargs):
+        response = super(MultiuploadMixin, self).get(request, *args,
+                                                     **kwargs)
+        self.authenticator.update_response(response, request)
+        return response
+
+    def form_valid(self, form):
+        response = super(MultiuploadMixin, self).form_valid(form)
+        self.authenticator.remove_tokens(self.response, self.request)
+        return response
+
+    def form_invalid(self, form):
+        response = super(MultiuploadMixin, self).form_invalid(form)
+        self.authenticator.update_response(response, self.request)
+        return response
+
+
+class CrudMixin(MultiuploadMixin):
     model = DemoModel
+
     def get_sucess_url(self):
         return reverse('crud_list')
+
     def get_queryset(self):
         return self.model.objects.all()
-    def get_form(self, form_class):
-        import ipdb; ipdb.set_trace()
-        form = super(CrudMixin, self).get_form(form_class)
-        return form
 
     
 class CrudListView(CrudMixin, ListView):

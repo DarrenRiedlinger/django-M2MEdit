@@ -32,8 +32,6 @@ from functools import partial
 COOKIE_LIFETIME = getattr(settings, 'UPLOAD_COOKIE_LIFETIME', 300)
 
 
-
-
 class FileSetMixin(object):
     """
     Mixin for generic views
@@ -112,7 +110,7 @@ class FileSetMixin(object):
         response = HttpResponseRedirect(self.get_sucess_url())
         # update cookie
         return response
-        
+   
     def form_invalid(self, form):
         response = super(FileSetMixin, self).form_invalid(form)
         # update cookie
