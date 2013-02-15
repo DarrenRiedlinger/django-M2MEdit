@@ -136,9 +136,10 @@ INSTALLED_APPS = (
     # 'django.contrib.admin',
     # Uncomment the next line to enable admin documentation:
     # 'django.contrib.admindocs',
-	'sorl.thumbnail',
+    'sorl.thumbnail',
     'upload',
     'demoapp',
+    'south',
     'django_trace',
 )
 

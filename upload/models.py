@@ -97,4 +97,10 @@ class FileSetField(models.OneToOneField):
         defaults = {'form_class': MultiUploaderField}
         defaults.update(kwargs)
         return super(FileSetField, self).formfield(**defaults)
+# South custom field introspection
+try:
+    from south.modelsinspector import add_introspection_rules
+    add_introspection_rules([], ['^upload\.models\.FileSetField',])
+except ImportError:
+    pass
 

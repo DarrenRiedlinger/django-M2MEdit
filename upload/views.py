@@ -55,8 +55,10 @@ class FileSetMixin(object):
         # verify cookie matches pk kwarg
         # replace uuid with pk if we've set pk in the cookie
         try:
+            import ipdb; ipdb.set_trace()
             self.object = self.get_object()
-        except AttributeError:
+        # if pk kwarg can't be coerced to int, it will be a ValueError
+        except (AttributeError, ValueError):
             self.object = None
         form_class = self.get_form_class()
         form = self.get_form(form_class)
@@ -66,9 +68,9 @@ class FileSetMixin(object):
         # verify cookie 
         try:
             self.object = self.get_object()
-        except AttributeError:
+        except (AttributeError, ValueError):
             self.object = None
-        form_class = self.get_form_class() 
+        form_class = self.get_form_class()
         form = self.get_form(form_class)
         if form.is_valid():
             self.save_form(form)

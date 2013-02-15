@@ -84,7 +84,6 @@ class BaseStorage(object):
 #         json.JSONDecoder.__init__(self, object_hook=self.list_to_object)
 # 
 #     def list_to_object(self, l):
-#         import ipdb; ipdb.set_trace()
 #         args = [v for v in l]
 #         return FileSetToken(*args)
 
@@ -114,7 +113,6 @@ class CookieStorage(object):
 
         cookies_enabled = True
         # Check that cookies are enabled
-        import ipdb; ipdb.set_trace()
         if getattr(request, 'session', None):
             if not request.session.test_cookie_worked():
                 cookies_enabled = False
@@ -151,7 +149,6 @@ class CookieStorage(object):
     def add(self, tokens, response, request):
         # If session framework is installed, use it's test cookie facilities to
         # determine if cookies are enabled.  Otherwise, set our own test cookie
-        import ipdb; ipdb.set_trace()
         if getattr(request, 'session', None):
             if not request.session.test_cookie_worked():
                 request.session.set_test_cookie()
@@ -166,7 +163,6 @@ class CookieStorage(object):
                 key = key.encode('ascii')
             encoded = json.dumps([v for v in token])
             #encoded = json.dumps(token._asdict())
-            import ipdb; ipdb.set_trace()
             response.set_signed_cookie(key=key, value=encoded, salt=key,
                                        max_age=self.cookie_lifetime)
 
