@@ -1,11 +1,11 @@
 from django.db import models
-from upload.models import FileSetField
+from upload.modelfields import FileSetField
 from django.core.urlresolvers import reverse
 
 
 class DemoModel(models.Model):
     sometext = models.CharField(max_length=30)
-    attachments = FileSetField('upload.FileSet', blank=True, null=True)
+    attachments = FileSetField('upload.File', related_name='+')
     foo = models.ManyToManyField('upload.File')
 
     def get_absolute_url(self):

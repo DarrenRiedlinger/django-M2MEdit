@@ -55,7 +55,6 @@ class FileSetMixin(object):
         # verify cookie matches pk kwarg
         # replace uuid with pk if we've set pk in the cookie
         try:
-            import ipdb; ipdb.set_trace()
             self.object = self.get_object()
         # if pk kwarg can't be coerced to int, it will be a ValueError
         except (AttributeError, ValueError):

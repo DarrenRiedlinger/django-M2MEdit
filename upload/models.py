@@ -3,7 +3,6 @@ from django.core.files.storage import default_storage
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes import generic
-from upload.fields import MultiUploaderField
 from django.db.models.fields.related import SingleRelatedObjectDescriptor
 from django.core.exceptions import ObjectDoesNotExist
 
@@ -84,23 +83,6 @@ class FileSet(models.Model):
             except ObjectDoesNotExist:
                 pass
         return None
-    
+
     def __unicode__(self):
         return 'FileSet-%s' % self.pk
-
-class FileSetField(models.OneToOneField):
-    """
-    A OneToOneField to FileSet whose fomrclass defaults to a MultiUploaderField
-    """
-
-    def formfield(self, **kwargs):
-        defaults = {'form_class': MultiUploaderField}
-        defaults.update(kwargs)
-        return super(FileSetField, self).formfield(**defaults)
-# South custom field introspection
-try:
-    from south.modelsinspector import add_introspection_rules
-    add_introspection_rules([], ['^upload\.models\.FileSetField',])
-except ImportError:
-    pass
-
