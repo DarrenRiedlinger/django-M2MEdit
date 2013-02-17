@@ -30,6 +30,14 @@ class FileSetField(models.ManyToManyField):
             }
         super(FileSetField, self).contribute_to_class(cls, name)
 
+    def value_from_object(self, obj):
+        """
+        Gets called by forms.models.model_to_dict (and possibly others)
+        to construct a dyanamic initial dict to pass to the form class
+        """
+        import ipdb; ipdb.set_trace()
+        return super(FileSetField, self).value_from_object(obj)
+
     def formfield(self, **kwargs):
         defaults = {'form_class': MultiUploaderField}
         defaults.update(kwargs)

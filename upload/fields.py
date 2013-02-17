@@ -12,6 +12,7 @@ class IframeUuidWidget(forms.widgets.HiddenInput):
     the upload view corresponding to that uuid
     """
     def render(self, name, value, attrs=None):
+        import ipdb; ipdb.set_trace()
         url = reverse('uid_upload', kwargs={'uid': value},
                       current_app='upload')
         # Can we include div class dynamically
@@ -56,10 +57,24 @@ class MultiUploaderIframeWidget(forms.widgets.MultiWidget):
         super(MultiUploaderIframeWidget, self).__init__(widgets, attrs)
 
     def decompress(self, value):
+        import ipdb; ipdb.set_trace()
         if value:
             return [value[0], value[1]]
         return [None, None]
 
+    def render(self, name, value, attrs=None):
+        import ipdb; ipdb.set_trace()
+        """
+        We wouldn't need a render method here, except when the parent form
+        gets passed an initial data--in which case we just get passed a list
+        of pk's (not [uuid, [pks]]).  This is a hack.
+        """
+        if isinstance(value, int):
+            value = [value]
+        if (len(value) != 2) or not isinstance(value[-1], (list, tuple)):
+            value = [ uuid.uuid4().hex, value ]
+        return super(MultiUploaderIframeWidget, self).render(name, value,
+                attrs)
     #def format_output(self, rendered_widgets):
     #    return u'<div class="Multiupload">%s</div>' % u''.join(rendered_widgets)
 
@@ -71,6 +86,7 @@ class MultiUploaderField(forms.MultiValueField):
     widget = MultiUploaderIframeWidget
 
     def __init__(self, queryset=None, initial=None, *args, **kwargs):
+        import ipdb; ipdb.set_trace()
         fields = (
             forms.CharField(),
             forms.ModelMultipleChoiceField(queryset=queryset)

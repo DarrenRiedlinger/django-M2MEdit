@@ -14,25 +14,29 @@ import uuid
 class MultiuploadMixin(object):
     def get_form(self, form_class):
         form = super(MultiuploadMixin, self).get_form(form_class)
-        # self.authenticator = MultiuploadAuthenticator(self.request,
-        #                                               form, self.object)
-        # self.authenticator.prep_form()
+        import ipdb; ipdb.set_trace()
+        self.authenticator = MultiuploadAuthenticator(self.request,
+                                                      form, self.object)
+        self.authenticator.prep_form()
         return form
 
     def get(self, request, *args, **kwargs):
         response = super(MultiuploadMixin, self).get(request, *args,
                                                      **kwargs)
-        # self.authenticator.update_response(response, request)
+        import ipdb; ipdb.set_trace()
+        self.authenticator.update_response(response)
         return response
 
     def form_valid(self, form):
         response = super(MultiuploadMixin, self).form_valid(form)
-        # self.authenticator.remove_tokens(self.response, self.request)
+        import ipdb; ipdb.set_trace()
+        self.authenticator.remove_tokens(response)
         return response
 
     def form_invalid(self, form):
         response = super(MultiuploadMixin, self).form_invalid(form)
-        # self.authenticator.update_response(response, self.request)
+        import ipdb; ipdb.set_trace()
+        self.authenticator.update_response(response)
         return response
 
 

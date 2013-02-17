@@ -49,7 +49,7 @@ class MultiuploadAuthenticator(object):
         if self.form.is_bound:
             for label, field in self.multiuploader_fields.iteritems():
                 try:
-                    hidden_field_val = self.form.data[label]
+                    uid = self.form.data[label + '_0']  # MultiWidget 0 is uid
                 except KeyError:
                     raise SuspiciousOperation(
                             "User deleted hidden field %s of %s.%s" % (
@@ -59,15 +59,15 @@ class MultiuploadAuthenticator(object):
                             )
                     )
                 # Get token. Let storage riase exception if need be
-                token = self.storage.load(hidden_field_val, self.request)
+                token = self.storage.load(uid, self.request)
 
                 initial = getattr(self.form.initial, label, None)
 
                 # form.initial['label'] will be non-None if there was an
                 # existing parent model instances. If so, we just need
-                # to make sure our submitted hidden_field_val matches.
+                # to make sure our submitted uid matches.
                 if initial:
-                    if initial == hidden_field_val:
+                    if initial == uid:
                         # In case subsequent form validation fails, we need to
                         # make self.update_response know to update this tokens
                         # timestamp
@@ -83,9 +83,9 @@ class MultiuploadAuthenticator(object):
                 # Otherwise, no initial data to rely on so we need to perform
                 # more advanced checks using the token
                 else:
-                    # Make sure user isn't substituting a fileset/token
-                    # created by another form (e.g. to use the other form
-                    # classes more relxed file size/mime type
+                    # Make sure user isn't substituting a token
+                    # created by another form (e.g. to use another form
+                    # class's more relaxed file size/mime type
                     # restrictions)
                     if (token.form_class_name !=
                             self.form.__class__.__name__ or
@@ -98,31 +98,37 @@ class MultiuploadAuthenticator(object):
                                     self.form.__module__,
                                     self.form.__class__.__name__)
                         )
-                    if token.fileset_pk:
-                        # replace hiden field's uuid with our newly created
-                        # fileset pk
-                        self.form.data[label] = token.fileset_pk
-                    # NB: if token.fielset_pk is None, the model
-                    # isntance still needs to be created and our user
-                    # never uploaded a valid file.  We can let the
-                    # formfield validators decide if they want to create
-                    # a empty FileSet or raise a value required error
+
+                    # TODO: we can get a bit fancier here by comparing the
+                    # fields 'initial' pks with our token.pks and possibly
+                    # taking a union of the two (to prevent contention between
+                    # to concurrent users editing the form)
+
+                    # Make form.data mutable
+                    self.form.data = self.form.data.copy()
+                    # replace hiden field's pks with our newly created
+                    # fileset pk
+                    self.form.data[label + '_1'] = ','.join(
+                            [str(pk) for pk in token.pks])
+                    # Add token, so it will be updated (needed if form fails
+                    # validation)
                     self.tokens.append(token)
-        else:  # form is not bound; its a GET request
+        # form is not bound. A GET request
+        else:
             for label, field in self.multiuploader_fields.iteritems():
-                # form.initial will be set if this is an existing instance
-                # Otherwise, have field generate a unique initial val
+                # if a dyanmic initial value dict was passed to the form
+                # class (perhaps by a modelform), that will have precedence
+                # over the field intial, so will need that pks list
                 try:
-                    pk = hidden_field_value = getattr(self.form.initial,
-                                                      label)
-                except AttributeError:
-                    hidden_field_value = field.initial
-                    pk = None
-                self.tokens.append(make_token(self.form, label,
-                                   hidden_field_value, pk))
+                    pks = self.form.initial[label]
+                    uid = 'WTF'
+                # No dynamic initial value on form
+                except KeyError:
+                    uid, pks = field.initial
+                self.tokens.append(make_token(uid, pks, self.form, label))
 
-    def update_response(self, response, request):
-        self.storage.add(self.tokens, response, request)
+    def update_response(self, response):
+        self.storage.add(self.tokens, response, self.request)
 
-    def remove_tokens(self, response, request=None):
+    def remove_tokens(self, response):
         self.storage.remove(self.tokens, response)
