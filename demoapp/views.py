@@ -17,7 +17,6 @@ class MultiuploadMixin(object):
         # self.authenticator = MultiuploadAuthenticator(self.request,
         #                                               form, self.object)
         # self.authenticator.prep_form()
-        import ipdb; ipdb.set_trace()
         return form
 
     def get(self, request, *args, **kwargs):
@@ -46,21 +45,26 @@ class CrudMixin(MultiuploadMixin):
     def get_queryset(self):
         return self.model.objects.all()
 
-    
+
 class CrudListView(CrudMixin, ListView):
     pass
+
 
 class CrudDetailView(CrudMixin, DetailView):
     pass
 
+
 class CrudCreateView(CrudMixin, CreateView):
     pass
+
 
 class CrudDeleteView(CrudMixin, DeleteView):
     pass
 
+
 class CrudUpdateView(CrudMixin, UpdateView):
     pass
+
 
 def demo(request):
     if request.method == 'POST':

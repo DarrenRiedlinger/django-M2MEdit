@@ -3,69 +3,36 @@ from django.core.urlresolvers import reverse
 from django.utils.safestring import mark_safe
 from django.core import validators
 from django.utils.datastructures import MultiValueDict, MergeDict
-from upload.models import File
 import uuid
-import re
 
 
-class HiddenInputRegex(object):
+class IframeUuidWidget(forms.widgets.HiddenInput):
     """
-    Helper class for extracting a uuid and str_vals (a list of pk's that has
-    been converted to univode) from a hidden input field.
+    Renders a hidden input containing our uuid, and an iframe containing
+    the upload view corresponding to that uuid
+    """
+    def render(self, name, value, attrs=None):
+        url = reverse('uid_upload', kwargs={'uid': value},
+                      current_app='upload')
+        # Can we include div class dynamically
+        output = u'<iframe src="%s"></iframe>' % url
+        hidden_input = super(IframeUuidWidget, self).render(name,
+                                               value, attrs=attrs)
+        return mark_safe('\n'.join((output, hidden_input)))
+
+
+class SelectMultipleTextInput(forms.widgets.HiddenInput):
+    """
+    A text input widget customized work with a Multiple Choice Field
+    (converting between a python list and a comma-separated string).
     """
 
-    pattern = """
-    ^                           # beginning of string
-    (?P<uid>[0-9A-Fa-f]{32})?   # an optional 32 char hexadecimal uuid
-    (?:                         # non-capturing group
-      :?                        #   optional ':'
-      (?P<str_vals>             #   start str_val named-group
-        \[                      #     literal '['
-        (?:                     #     non-capture group
-          \d+,?\ ?              #       digit, optional comma and space
-        )*                      #     0 or more of non-capture group
-        \]                      #     literal ']'
-      )                         #   end str_val (e.g. '[1,3,5]')
-    )?                          # end optional non-capture group
-    $                           # end of string
-    """
-    uuid_str_vals_regex = re.compile(pattern, re.VERBOSE)
-
-    @classmethod
-    def extract(cls, string):
-        """
-        returns a tupple (uuid, str_vals)
-        """
-        matches = cls.uuid_str_vals_regex.match(string)
-        if matches:
-            uid = matches.group('uid')
-            str_vals = matches.group('str_vals')
-            return (uid, str_vals)
-        return (None, None)
-
-
-
-# class MultiUploaderWidget(forms.widgets.HiddenInput):
-#     # Not yet implemented
-#     def render(self, name, value, attrs=None):
-#         import ipdb; ipdb.set_trace()
-#         url = reverse('edit_fileset', kwargs={'pk': value},
-#                       current_app='upload')
-#         output = u'<div><iframe src="%s"></iframe></div>' % url
-#         hidden_input = super(MultiUploaderWidget, self).render(name,
-#                                                         value, attrs=attrs)
-#         return mark_safe('\n'.join((output, hidden_input)))
-class SelectMultipleTextInput(forms.widgets.TextInput):
-    """
-    A text input widget customized wo work with a Multiple Choice Field
-    """
     def render(self, name, value, attrs=None):
         if value is None: value = []
         value = ','.join([str(v) for v in value])
         return super(SelectMultipleTextInput, self).render(name, value, attrs)
 
     def value_from_datadict(self, data, files, name):
-        import ipdb; ipdb.set_trace()
         data = data.get(name, None)
         if not data:
             data = []
@@ -77,129 +44,54 @@ class SelectMultipleTextInput(forms.widgets.TextInput):
 class MultiUploaderIframeWidget(forms.widgets.MultiWidget):
     """
     A widget that renders:
-        --an iframe with a link to our fileupload form
-        --a hidden charfield containing a list of selected files
+        --an iframe with a link to our fileupload form + hidden uuid input
+        --a hidden charfield containing a comma-separated list of selected
+          files
     """
     def __init__(self, attrs=None):
-        import ipdb; ipdb.set_trace()
         widgets = (
-            forms.widgets.TextInput(attrs=attrs),
+            IframeUuidWidget(attrs=attrs),
             SelectMultipleTextInput(attrs=attrs),
         )
         super(MultiUploaderIframeWidget, self).__init__(widgets, attrs)
 
-    def render(self, name, value, attrs=None):
-        """
-        Overiding forms.widgets.MultiWidget to always decompress
-        """
-        import ipdb; ipdb.set_trace()
-        if self.is_localized:
-            for widget in self.widgets:
-                widget.is_localized = self.is_localized
-        # value is a list of values, each corresponding to a widget
-        # in self.widgets.
-        value = self.decompress(value)
-        output = []
-        final_attrs = self.build_attrs(attrs)
-        id_ = final_attrs.get('id', None)
-        for i, widget in enumerate(self.widgets):
-            try:
-                widget_value = value[i]
-            except IndexError:
-                widget_value = None
-            if id_:
-                final_attrs = dict(final_attrs, id='%s_%s' % (id_, i))
-            output.append(widget.render(name + '_%s' % i, widget_value,
-                                        final_attrs))
-        return mark_safe(self.format_output(output))
-
     def decompress(self, value):
-        import ipdb; ipdb.set_trace()
         if value:
             return [value[0], value[1]]
         return [None, None]
 
-
-class ModelMultipleChoiceCharField(forms.ModelMultipleChoiceField):
-    """
-    A ModelMultipleChoiceField customized to work with a text-input widget.
-    """
-    widget = forms.TextInput
-
+    #def format_output(self, rendered_widgets):
+    #    return u'<div class="Multiupload">%s</div>' % u''.join(rendered_widgets)
 
 class MultiUploaderField(forms.MultiValueField):
     """
     Contains a charfield with an autogenerated uuid and a
     ModelMultipleChoiceField.
     """
-    
     widget = MultiUploaderIframeWidget
 
     def __init__(self, queryset=None, initial=None, *args, **kwargs):
-        import ipdb; ipdb.set_trace()
-        # Don't need the querset here and it would cause super __init__ to
-        # complain
-
         fields = (
             forms.CharField(),
-            ModelMultipleChoiceCharField(queryset=queryset)
+            forms.ModelMultipleChoiceField(queryset=queryset)
         )
         super(MultiUploaderField, self).__init__(fields, initial=initial,
                                                  *args, **kwargs)
 
-    #def clean(self, value):
-    #    """
-    #    Validates every value in the given list. A value is validated againsi
-    #    the corresponding Field in self.fields.
-
-    #    For example, if this MultiValueField was instantiated with
-    #    fields=(DateField(), TimeField()), clean() would call
-    #    DateField.clean(value[0]) and TimeField.clean(value[1]).
-    #    """
-    #    import ipdb; ipdb.set_trace()
-    #    clean_data = []
-    #    errors = ErrorList()
-    #    if not value or isinstance(value, (list, tuple)):
-    #        if not value or not [v for v in value if v not in validators.EMPTY_VALUES]:
-    #            if self.required:
-    #                raise ValidationError(self.error_messages['required'])
-    #            else:
-    #                return self.compress([])
-    #    else:
-    #        raise ValidationError(self.error_messages['invalid'])
-    #    for i, field in enumerate(self.fields):
-    #        try:
-    #            field_value = value[i]
-    #        except IndexError:
-    #            field_value = None
-    #        if self.required and field_value in validators.EMPTY_VALUES:
-    #            raise ValidationError(self.error_messages['required'])
-    #        try:
-    #            clean_data.append(field.clean(field_value))
-    #        except ValidationError, e:
-    #            # Collect all validation errors in a single list, which we'll
-    #            # raise at the end of clean(), rather than raising a single
-    #            # exception for the first error we encounter.
-    #            errors.extend(e.messages)
-    #    if errors:
-    #        raise ValidationError(errors)
-    #    
-    #    out = self.compress(clean_data)
-    #    self.validate(out)
-    #    self.run_validators(out)
-        
     def compress(self, data_list):
-        import ipdb; ipdb.set_trace()
+        """ 
+        Takes data_list of form [uuid, [<pk list>]] and returns just the pk
+        list
+        """
         if data_list:
             return data_list[1]
         return None
 
-    def to_python(self, value):
-        import ipdb; ipdb.set_trace()
-        super(MultiUploaderField, self).to_python(value)
-
     @property
     def uid(self):
+        """
+        Generate a uuid and store it on the instance
+        """
         if not getattr(self, '_uid', None):
             self._uid = uuid.uuid4().hex
         return self._uid
@@ -216,8 +108,9 @@ class MultiUploaderField(forms.MultiValueField):
     def initial(self, value):
         """
         Ensure self.initial is of the format: [uid, pk_list]
+        (it will typically be passed a python list of pks, and we need to add
+        the uuid)
         """
-        import ipdb; ipdb.set_trace()
         if value is None:
             self._initial = [self.uid, []]
         elif isinstance(value, (list, tuple)):

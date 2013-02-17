@@ -202,8 +202,8 @@ def edit_file_set(request, file_set_pk):
             else: # Normal HTML request
                 # Redirect back to this page after post
                 return HttpResponseRedirect(reverse(
-                    'upload.views.edit_file_set',
-                    kwargs={'file_set_pk': file_set.pk} ))
+                    'upload.views.uid_upload',
+                    kwargs={'uid': file_set.pk} ))
     else:
         form = FileSetInstanceForm()
 

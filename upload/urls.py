@@ -16,8 +16,8 @@ urlpatterns = patterns('upload.views',
     # url(r'^(?P<file_set_pk>\d+)/$', 'edit_file_set', name='edit_file_set'),
     #(r'^', 'upload'),
     url(
-        regex='^fileset/(?P<pk>\w+)/$',
+        regex='^(?P<uid>\w+)/$',
         view=CreateOrUpdate.as_view(),
-        name='edit_fileset',
+        name='uid_upload',
        ),
 )

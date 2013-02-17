@@ -12,9 +12,14 @@ class FileSetField(models.ManyToManyField):
                      'unique related name and a overridden formfield.'))
 
     def __init__(self, to, **kwargs):
+
+        # Force a reverse unique reverse descriptor (may be needed for
+        # cleaning up orphan uploads with a management command)
         if kwargs['related_name'] is None or '+':
             kwargs['related_name'] = "_%(app_label)s_%(class)s_%(name)s_related"
         super(FileSetField, self).__init__(to, **kwargs)
+        # models.ManyToManyField sets its own help_text, which we overide
+        self.help_text = getattr(kwargs, 'help_text', '') 
 
     def contribute_to_class(self, cls, name):
         if self.rel.related_name:
