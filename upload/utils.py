@@ -22,9 +22,8 @@ from upload.fields import MultiUploaderField
 class MultiuploadAuthenticator(object):
     storage = CookieStorage()
 
-    def __init__(self, request, form, obj=None):
+    def __init__(self, request, obj=None):
         self.request = request
-        self.form = form
         self.object = obj
         self.tokens = []
 
@@ -41,7 +40,8 @@ class MultiuploadAuthenticator(object):
                                               MultiUploaderField)}
         return self._multiuploader_fields
 
-    def prep_form(self):
+    def prep_form(self, form):
+        self.form = form
         """
         Prepare a form for validation
         """
@@ -61,58 +61,36 @@ class MultiuploadAuthenticator(object):
                 # Get token. Let storage riase exception if need be
                 token = self.storage.load(uid, self.request)
 
-                initial = getattr(self.form.initial, label, None)
+                # Make sure user isn't substituting a token
+                # created by another form (e.g. to use another form
+                # class's more relaxed file size/mime type
+                # restrictions)
+                if (token.form_class_name !=
+                        self.form.__class__.__name__ or
+                        token.form_module !=
+                        self.form.__class__.__module__ or
+                        token.field_label != label):
+                    raise SuspiciousOperation(
+                            "User modified hidden field %s of %s.%s" % (
+                                label,
+                                self.form.__module__,
+                                self.form.__class__.__name__)
+                    )
 
-                # form.initial['label'] will be non-None if there was an
-                # existing parent model instances. If so, we just need
-                # to make sure our submitted uid matches.
-                if initial:
-                    if initial == uid:
-                        # In case subsequent form validation fails, we need to
-                        # make self.update_response know to update this tokens
-                        # timestamp
-                        self.tokens.append(token)
-                        continue
-                    else:
-                        raise SuspiciousOperation(
-                                "User modified hidden field %s of %s.%s" % (
-                                    label,
-                                    self.form.__module__,
-                                    self.form.__class__.__name__)
-                        )
-                # Otherwise, no initial data to rely on so we need to perform
-                # more advanced checks using the token
-                else:
-                    # Make sure user isn't substituting a token
-                    # created by another form (e.g. to use another form
-                    # class's more relaxed file size/mime type
-                    # restrictions)
-                    if (token.form_class_name !=
-                            self.form.__class__.__name__ or
-                            token.form_module !=
-                            self.form.__class__.__module__ or
-                            token.field_label != label):
-                        raise SuspiciousOperation(
-                                "User modified hidden field %s of %s.%s" % (
-                                    label,
-                                    self.form.__module__,
-                                    self.form.__class__.__name__)
-                        )
+                # TODO: we can get a bit fancier here by comparing the
+                # fields 'initial' pks with our token.pks and possibly
+                # taking a union of the two (to prevent contention between
+                # to concurrent users editing the form)
 
-                    # TODO: we can get a bit fancier here by comparing the
-                    # fields 'initial' pks with our token.pks and possibly
-                    # taking a union of the two (to prevent contention between
-                    # to concurrent users editing the form)
-
-                    # Make form.data mutable
-                    self.form.data = self.form.data.copy()
-                    # replace hiden field's pks with our newly created
-                    # fileset pk
-                    self.form.data[label + '_1'] = ','.join(
-                            [str(pk) for pk in token.pks])
-                    # Add token, so it will be updated (needed if form fails
-                    # validation)
-                    self.tokens.append(token)
+                # Make form.data mutable
+                self.form.data = self.form.data.copy()
+                # replace hiden field's pks with our newly created
+                # fileset pk
+                self.form.data[label + '_1'] = ','.join(
+                        [str(pk) for pk in token.pks])
+                # Add token, so it will be updated (needed if form fails
+                # validation)
+                self.tokens.append(token)
         # form is not bound. A GET request
         else:
             for label, field in self.multiuploader_fields.iteritems():

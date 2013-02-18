@@ -124,10 +124,13 @@ class CookieStorage(object):
                 'or you do not have permission to acess this resource. Please '
                 'refresh this page and try again.'))
         except SignatureExpired:
+            # propbably shouldn't raise permission denied, but return a session
+            # expired page.
             raise PermissionDenied(('Session has expired, please refresh this '
                                     'page and try again'))
         except BadSignature:
-            raise SuspiciousOperation('Fileset token with key %s was tampered')
+            raise SuspiciousOperation('Fileset token with key %s was tampered'
+                                       % key)       
 
         return FileSetToken(*json.loads(cookie))
 
@@ -152,4 +155,8 @@ class CookieStorage(object):
 
     def remove(self, tokens, response):
         for token in tokens:
-            response.delete_cookie(''.join((self.prefix, token.uid)))
+            key = ''.join((self.prefix, token.uid))
+            #pythons cookie class requires an ascii key
+            if type(key) == unicode:
+                key = key.encode('ascii')
+            response.delete_cookie(key)
