@@ -1,5 +1,5 @@
 from django.conf.urls.defaults import *
-from upload.views import CreateOrUpdate
+from upload.views import M2MEdit
 
 urlpatterns = patterns('upload.views',
 
@@ -17,7 +17,7 @@ urlpatterns = patterns('upload.views',
     #(r'^', 'upload'),
     url(
         regex='^(?P<uid>\w+)/$',
-        view=CreateOrUpdate.as_view(),
+        view=M2MEdit.as_view(),
         name='uid_upload',
        ),
 )

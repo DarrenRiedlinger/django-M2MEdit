@@ -16,6 +16,8 @@ FileSetToken = recordtype('FileSetToken', [
     'field_label',
     'form_class_name',
     'form_module',
+    'model_class_name',
+    'model_module',
     ('max_filesize', None),
     ('min_filesize', None),
     ('max_files', None),
@@ -28,6 +30,7 @@ def make_token(uid, pks, form, field_label):
     Convencience method for constructing a FileSetToken
     """
 
+    import ipdb; ipdb.set_trace()
     field = form.fields[field_label]
 
     return FileSetToken(
@@ -36,6 +39,8 @@ def make_token(uid, pks, form, field_label):
         field_label=field_label,
         form_class_name=form.__class__.__name__,
         form_module=form.__module__,
+        model_class_name=field.queryset.model.__name__,
+        model_module=field.queryset.model.__module__,
         max_filesize=getattr(field, 'max_filesize', None),
         min_filesize=getattr(field, 'min_filesize', None),
         max_files=getattr(field, 'max_files', None),

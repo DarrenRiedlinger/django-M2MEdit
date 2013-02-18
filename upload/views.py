@@ -31,14 +31,11 @@ from functools import partial
 
 COOKIE_LIFETIME = getattr(settings, 'UPLOAD_COOKIE_LIFETIME', 300)
 
+from upload.storage import CookieStorage
+from django import forms
 
-class FileSetMixin(object):
-    """
-    Mixin for generic views
-    """
-    model = FileSet
-    form_class = FileSetForm
 
+class M2MEdit(CreateView):
     #def get_form_class(self):
     #    if self.object:
     #        return partial(FileSetForm, self.object.pk)
@@ -51,17 +48,37 @@ class FileSetMixin(object):
     def get_queryset(self):
         return FileSet.objects.all()
 
+    def get_form_kwargs(self, **kwargs):
+        keywords = super(M2MEdit, self).get_form_kwargs()
+        keywords.update(kwargs)
+        return keywords
+
+    def get_list_form_class(queryset):
+        return type('ListForm', (forms.Form,),
+                dict(existing_objects = forms.ModelMultipleChoiceField(
+                    queryset=queryset,
+                    widget=forms.CheckboxInput)))
+
     def get(self, request, *args, **kwargs):
-        # verify cookie matches pk kwarg
-        # replace uuid with pk if we've set pk in the cookie
-        try:
-            self.object = self.get_object()
-        # if pk kwarg can't be coerced to int, it will be a ValueError
-        except (AttributeError, ValueError):
-            self.object = None
-        form_class = self.get_form_class()
-        form = self.get_form(form_class)
-        return self.render_to_response(self.get_context_data(form=form))
+        self.uid = kwargs['uid']
+        self.object = None
+        self.storage = CookieStorage()
+        import ipdb; ipdb.set_trace()
+        token = self.storage.load(self.uid, request)
+        module = __import__(token.model_module,
+                            fromlist=[token.model_class_name])
+        self.model = getattr(module, token.model_class_name)
+        CreationForm = self.get_form_class()
+        creation_form = CreationForm(**self.get_form_kwargs(
+            prefix='creation'))
+        if token.pks:
+            queryset = self.model._default_manager.filer(pk__in=token.pks)
+            ListForm = self.get_list_form_class(queryset)
+            list_form = ListForm(**self.get_form_kwargs(prefix='list'))
+        else:
+            list_form = None
+        return self.render_to_response(self.get_context_data(
+            creation_form=creation_form, list_form=list_form))
 
     def post(self, request, *args, **kwargs):
         # verify cookie 
@@ -116,10 +133,6 @@ class FileSetMixin(object):
         response = super(FileSetMixin, self).form_invalid(form)
         # update cookie
         return response
-
-
-class CreateOrUpdate(FileSetMixin, CreateView):
-    pass
 
 
 

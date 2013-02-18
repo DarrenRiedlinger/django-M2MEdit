@@ -87,6 +87,7 @@ class MultiUploaderField(forms.MultiValueField):
     ModelMultipleChoiceField.
     """
     def __init__(self, queryset=None, initial=None, *args, **kwargs):
+        self.queryset = queryset
         fields = (
             forms.CharField(),
             forms.ModelMultipleChoiceField(queryset=queryset)
