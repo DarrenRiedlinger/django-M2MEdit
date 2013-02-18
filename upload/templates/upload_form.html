@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Minimal Django File Upload Example</title>   
+  </head>
+  <body>
+    <!-- Upload form. Note enctype attribute! -->
+    <form action="" method="post" enctype="multipart/form-data">
+      {{ creation_form.as_p }}
+      {% if list_form %}
+        {{ list_form.as_p }}
+      {% else %}
+        <p>No items exist</p>
+      {% endif %}
+      <p><input type="submit" value="Add/Delete Selected Files" /> <input type="reset" value="Clear Selections" /></p>
+    </form>
+  </body>
+</html> 
+

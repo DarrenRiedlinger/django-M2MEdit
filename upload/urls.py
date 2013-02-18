@@ -1,4 +1,5 @@
 from django.conf.urls.defaults import *
+from django.views.decorators.csrf import csrf_exempt
 from upload.views import M2MEdit
 
 urlpatterns = patterns('upload.views',
@@ -17,7 +18,8 @@ urlpatterns = patterns('upload.views',
     #(r'^', 'upload'),
     url(
         regex='^(?P<uid>\w+)/$',
-        view=M2MEdit.as_view(),
+        # Our token makes CSRF redundant
+        view=csrf_exempt(M2MEdit.as_view()),
         name='uid_upload',
        ),
 )

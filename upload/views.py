@@ -36,6 +36,7 @@ from django import forms
 
 
 class M2MEdit(CreateView):
+    template_name = 'upload_form.html'
     #def get_form_class(self):
     #    if self.object:
     #        return partial(FileSetForm, self.object.pk)
