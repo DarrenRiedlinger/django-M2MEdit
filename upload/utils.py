@@ -121,7 +121,7 @@ class MultiuploadAuthenticator(object):
                 # over the field intial, so will need that pks list
                 try:
                     pks = self.form.initial[label]
-                    uid = 'WTF'
+                    uid = field.uid
                 # No dynamic initial value on form
                 except KeyError:
                     uid, pks = field.initial

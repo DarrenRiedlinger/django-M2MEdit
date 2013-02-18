@@ -35,7 +35,6 @@ class FileSetField(models.ManyToManyField):
         Gets called by forms.models.model_to_dict (and possibly others)
         to construct a dyanamic initial dict to pass to the form class
         """
-        import ipdb; ipdb.set_trace()
         return super(FileSetField, self).value_from_object(obj)
 
     def formfield(self, **kwargs):
@@ -45,6 +44,6 @@ class FileSetField(models.ManyToManyField):
 # South custom field introspection
 try:
     from south.modelsinspector import add_introspection_rules
-    add_introspection_rules([], ['^upload\.models\.FileSetField'])
+    add_introspection_rules([], ['^upload\.modelfields\.FileSetField'])
 except ImportError:
     pass
