@@ -10,13 +10,16 @@ from upload.models import FileSet
 import uuid
 # Create your views here.
 
+class DemoCrudMixin(object):
+    model =
 
-def new_demo(request):
+def demo(request):
     if request.method == 'POST':
         pass
 
     else:
         form = DemoForm()
+        request.set
 
     return render('new_demo.html')
 
