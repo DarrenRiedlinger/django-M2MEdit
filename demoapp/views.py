@@ -10,6 +10,17 @@ from upload.models import FileSet
 import uuid
 # Create your views here.
 
+
+def new_demo(request):
+    if request.method == 'POST':
+        pass
+
+    else:
+        form = DemoForm()
+
+    return render('new_demo.html')
+
+
 def demo(request):
     # settings for the file upload
     #   you can define other parameters here

@@ -25,6 +25,8 @@ from django.template import RequestContext
 from django.core.urlresolvers import reverse
 from django.conf import settings
 
+from sorl.thumbnail import get_thumbnail
+
 from functools import partial
 
 COOKIE_LIFETIME = getattr(settings, 'UPLOAD_COOKIE_LIFETIME', 300)
@@ -50,13 +52,12 @@ def edit_file_set(request, file_set_pk):
     FileSetInstanceForm = partial(FileSetForm, file_set_pk)
 
     if request.method == 'POST':
-        import ipdb; ipdb.set_trace()
         form = FileSetInstanceForm(request.POST, request.FILES)
         if form.is_valid():
             # TODO: Will need to store max size and mimetype
             # in session, and then verify here
             error = False
-            [file_set.files.remove(f.pk) for f in form.cleaned_data['existing_files']]
+            [file_set.files.remove(f.pk) for f in form.cleaned_data['current_files']]
             if request.FILES:
                 newfile = File(document=request.FILES['file_upload'])
                 # After save, document.name gets appended to path and possibly
@@ -66,8 +67,17 @@ def edit_file_set(request, file_set_pk):
                 # TODO: Do I need to escape the original filename?
                 newfile.filename = newfile.document.name
                 newfile.save()
+                try:
+                    image = get_thumbnail(newfile.document, "80x80", quality=50)
+                    newfile.thumb_url = image.url
+                    newfile.save()
+                except (IOError, OverflowError):
+                    # Image not recognized by sorl
+                    pass
+
                 file_set.files.add(newfile)
                 file_set.save()
+
 
             # since jquery file_upload iframe transport won't be ajax,
             # also test for our explicit querystring

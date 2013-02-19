@@ -77,7 +77,9 @@ class CheckboxSelectFiles(forms.CheckboxSelectMultiple):
         if value is None: value = []
         has_id = attrs and 'id' in attrs
         final_attrs = self.build_attrs(attrs, name=name)
-        output = [u'<table><tr><th></th><th>File</th><th>Delete</th>']
+        if not self.choices and not choices:
+            return mark_safe(u'<ul><li>No files exist</li></ul>')
+        output = [u'<table><tr><th colspan="2">File</th><th>Delete</th>']
         # Normalize to strings
         str_values = set([force_unicode(v) for v in value])
         for i, (option_value, option_label, option_url, option_thumb) in\
@@ -115,11 +117,10 @@ class FileSetForm(forms.Form):
                 file_set = FileSet.objects.get(pk=file_set_pk)
             except DoesNotExist:
                 raise ImproperlyConfigured('Invalid file set pk')
-            self.fields['existing_files'] = ModelMultipleDeleteField(
+            self.fields['current_files'] = ModelMultipleDeleteField(
                         queryset=file_set.files.all(),
                         required=False,
                         widget=CheckboxSelectFiles,
-                        label=u'',
                         )
 
     file_upload = forms.FileField(
