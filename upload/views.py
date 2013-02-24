@@ -21,7 +21,7 @@ from django.core.signing import BadSignature, SignatureExpired
 from django.core.exceptions import PermissionDenied, SuspiciousOperation, ObjectDoesNotExist
 
 from upload.forms import FileUploadForm, FileSetForm
-from upload.models import FileSet, File, M2MObject
+from upload.models import FileSet, File
 from django.shortcuts import render_to_response, render
 from django.template import RequestContext
 from django.core.urlresolvers import reverse
@@ -36,7 +36,28 @@ COOKIE_LIFETIME = getattr(settings, 'UPLOAD_COOKIE_LIFETIME', 300)
 from upload.storage import CookieStorage, SessionStorage
 from upload.forms import CheckboxSelectFiles
 from django import forms
-import pickle
+
+
+class CustomModelMultipleChoiceField(forms.ModelMultipleChoiceField):
+    """
+    A ModelMultipleChoiceField that optionally uses a model's __html__() method
+    to render the choice field's label.
+    """
+    def label_from_instance(self, obj):
+        if hasattr(obj, '__html__'):
+            return obj.__html__()
+        else:
+            return super(CustomModelMultipleChoiceField,
+                         self).label_from_instance(obj)
+
+
+class ListForm(forms.Form):
+    def __init__(self, queryset, *args, **kwargs):
+        super(ListForm, self).__init__(*args, **kwargs)
+        self.fields['existing_objects'] = CustomModelMultipleChoiceField(
+                                              queryset=queryset,
+                                              widget=forms.CheckboxSelectMultiple,
+                                              required=False)
 
 
 class M2MEdit(CreateView):
@@ -68,8 +89,8 @@ class M2MEdit(CreateView):
                             fromlist=[self.token.model_class_name])
         self.model = getattr(module, self.token.model_class_name)
         CreationForm = self.get_form_class()
-        creation_form = CreationForm(**self.get_form_kwargs(
-            prefix='creation'))
+        creation_form = CreationForm(**self.get_form_kwargs(prefix='creation',
+                                                            empty_permitted=True))
         if self.token.pks:
             list_form = self.get_list_form()
         else:
@@ -77,48 +98,9 @@ class M2MEdit(CreateView):
         return creation_form, list_form
 
     def get_list_form(self):
-        # token.pks contains a list of both integers (representing pks)
-        # and unsaved model instances.  We need to transform this into
-        # something our choice field can represent.
-        choices = []
-        for index, pk in enumerate(self.token.pks):
-            if isinstance(pk, int):
-                try:
-                    obj = self.model._default_manager.get(pk=pk)
-                except ObjectDoesNotExist:
-                    # Someone else deleted the object.  We'll just skip it
-                    continue
-            else:
-                #our pk is actually an unsaved object
-                obj = pickle.loads(pk)
-            choices.append((index, self.label_from_instance(obj)))
-
-        list_form_class = type('ListForm', (forms.Form,),
-                dict(existing_objects = forms.MultipleChoiceField(
-                    choices=choices, required=False,
-                    widget=forms.CheckboxSelectMultiple)))
-        return list_form_class(**self.get_form_kwargs(prefix='list'))
-
-    def label_from_instance(self, instance):
-        """
-        This method is used to convert objects into strings; it's used to
-        generate the labels for the choices presented by this object in the
-        list form. Subclass can override this method to customize the display
-        of the choices.  Alternatively, using the default implementation, you
-        can define a '__html__' method on your model and generate the label
-        there. If __html__ is not specified, the __unicode__ method will be
-        used in stead.  A potential issue arises is if your model has fields
-        which are not included in the modelform used here, but which normally
-        get set in an overidden models.Model.save() call. In this case,
-        __unicode__ or __html__ would raise an AttributeError.  Therefore, you
-        can optionally define a pre_save() method, which will be called on
-        each uncommitted instance following form validation.
-        """
-        # TODO: CAN WE TRUST __html__ has been properly escaped?
-        if hasattr(instance, '__html__'):
-            return instance.__html__()
-        else:
-            return smart_unicode(instance)
+        queryset = self.model._default_manager.filter(pk__in=self.token.pks)
+        return ListForm(**self.get_form_kwargs(prefix='list',
+                                               queryset=queryset))
 
     def get(self, request, *args, **kwargs):
         import ipdb; ipdb.set_trace()
@@ -153,14 +135,18 @@ class M2MEdit(CreateView):
 
     def form_valid(self, creation_form, list_form):
         import ipdb; ipdb.set_trace()
-        selected = list_form.cleaned_data['existing_objects']
-        self.token.pks = [item for i, item in enumerate(self.token.pks) if
-                str(i) not in selected]
-        obj = creation_form.save(commit=False)
-        if hasattr(obj, 'pre_save'):
-            obj.pre_save()
-        pickled_obj = pickle.dumps(obj)
-        self.token.pks.append(pickled_obj)
+        if list_form and list_form.has_changed():
+            selected = set([obj.pk for obj in
+                        list_form.cleaned_data['existing_objects']])
+            self.token.pks = set(self.token.pks) - selected
+            # immediately delete any selected instances selected that were
+            # uploaded during this same M2M edit 
+            delete_pks = selected - set(self.token.original_pks)
+            self.model._default_manager.filter(pk__in=delete_pks).delete()
+        # If anything was submitted to the creation form
+        if creation_form.has_changed():
+            obj = creation_form.save()
+            self.token.pks.append(obj.pk)
         response = HttpResponseRedirect('')
         self.storage._store([self.token], response=response)
         return response
