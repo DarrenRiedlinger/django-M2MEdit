@@ -74,6 +74,7 @@ class ModelMultipleDeleteField(forms.ModelMultipleChoiceField):
 
 class CheckboxSelectFiles(forms.CheckboxSelectMultiple):
     def render(self, name, value, attrs=None, choices=()):
+        import ipdb; ipdb.set_trace()
         if value is None: value = []
         has_id = attrs and 'id' in attrs
         final_attrs = self.build_attrs(attrs, name=name)

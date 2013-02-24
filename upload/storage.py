@@ -30,7 +30,6 @@ def make_token(uid, pks, form, field_label):
     Convencience method for constructing a FileSetToken
     """
 
-    import ipdb; ipdb.set_trace()
     field = form.fields[field_label]
 
     return FileSetToken(
@@ -52,10 +51,16 @@ class BaseStorage(object):
     """
     Stores/loads fileset auth tokesn from a cookie
     """
-    def load(self, key, request=None):
+    prefix = 'upload_token_'
+
+    def __init__(self, request, *args, **kwargs):
+        self.request = request
+        super(BaseStorage, self).__init__(*args, **kwargs)
+
+    def _get(self, key, *args, **kwargs):
         raise NotImplementedError()
 
-    def add(self, token, response=None):
+    def _store(self, token, response=None):
         raise NotImplementedError()
 
 
@@ -75,12 +80,29 @@ class BaseStorage(object):
 #         args = [v for v in l]
 #         return FileSetToken(*args)
 
+class SessionStorage(BaseStorage):
+    prefix = '_uploads'
 
-class CookieStorage(object):
+    def _get(self, key, *args, **kwargs):
+        key = ''.join((self.prefix, key))
+        return self.request.session.get(key)
+
+    def _store(self, tokens, *args, **kwargs):
+        for token in tokens:
+            key = ''.join((self.prefix, token.uid))
+            self.request.session[key] = token
+
+    def _remove(self, tokens, response, *args, **kwargs):
+        for token in tokens:
+            key = ''.join((self.prefix, token.uid))
+            self.request.session.pop(key, None)
+
+
+class CookieStorage(BaseStorage):
     """
     Stores/loads fileset auth tokesn from a cookie
     """
-    prefix = 'upload_token_'
+
     # Seconds of inactivity between request and response
     max_cookie_age = getattr(settings, 'MULTIUPLOADER_SESSION_TIMEOUT', 300)
 
@@ -98,26 +120,18 @@ class CookieStorage(object):
     # upload sessions.
     cookie_lifetime = getattr(settings, 'MULTIUPLOADER_COOKIE_LIFETIME',
                               max_cookie_age)
-
-    def load(self, key, request):
-
-        cookies_enabled = True
+    def _get(self, key, request, max_age=max_cookie_age):
         # Check that cookies are enabled
-        if getattr(request, 'session', None):
-            if not request.session.test_cookie_worked():
-                cookies_enabled = False
-            else:
-                request.session.delete_test_cookie()
+        if ''.join((self.prefix, 'TEST')) not in request.COOKIES:
+            cookies_enabled = False
         else:
-            if ''.join((self.prefix, 'TEST')) not in request.COOKIES:
-                cookies_enabled = False
+            cookies_enabled = True
         if not cookies_enabled:
             raise PermissionDenied(('You must have cookies enabled to access '
                                     'this resource'))
         key = ''.join((self.prefix, key))
         try:
-            cookie = request.get_signed_cookie(key, salt=key,
-                                               max_age=self.max_cookie_age)
+            cookie = request.get_signed_cookie(key, salt=key, max_age=max_age)
         except KeyError:
             # Kind of annoying. With the optional setting
             # MULTIUPLOADER_COOKIE_LIFETIMe, you can set  the cookies to not
@@ -139,12 +153,10 @@ class CookieStorage(object):
 
         return FileSetToken(*json.loads(cookie))
 
-    def add(self, tokens, response, request):
+    def _store(self, tokens, response, request):
         # If session framework is installed, use it's test cookie facilities to
         # determine if cookies are enabled.  Otherwise, set our own test cookie
-        if getattr(request, 'session', None):
-            request.session.set_test_cookie()
-        elif ''.join(self.prefix, 'TEST') not in request.COOKIES:
+        if ''.join((self.prefix, 'TEST')) not in request.COOKIES:
                 response.set_cookie(key=''.join((self.prefix, 'TEST')),
                                     value='worked')
 
@@ -157,7 +169,6 @@ class CookieStorage(object):
             #encoded = json.dumps(token._asdict())
             response.set_signed_cookie(key=key, value=encoded, salt=key,
                                        max_age=self.cookie_lifetime)
-
     def remove(self, tokens, response):
         for token in tokens:
             key = ''.join((self.prefix, token.uid))

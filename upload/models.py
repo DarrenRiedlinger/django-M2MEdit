@@ -5,6 +5,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes import generic
 from django.db.models.fields.related import SingleRelatedObjectDescriptor
 from django.core.exceptions import ObjectDoesNotExist
+from django.utils.html import escape
+from django.utils.safestring import mark_safe
 
 
 #try:
@@ -17,11 +19,23 @@ from django.core.exceptions import ObjectDoesNotExist
 # Create your models here.
 
 
+from sorl.thumbnail import get_thumbnail
+
+
+class M2MObject(models.Model):
+    uid = models.CharField(max_length=32, db_index=True)
+    last_modified = models.DateTimeField(auto_now_add=True)
+
+    content_type = models.ForeignKey(ContentType)
+    object_id = models.PositiveIntegerField()
+    content_object = generic.GenericForeignKey('content_type', 'object_id')
+
+
 class File(models.Model):
     # Model for user uploaded files
-    filename = models.CharField(max_length=255)
+    filename = models.CharField(max_length=255, editable=False)
     document = models.FileField(upload_to='documents/%Y/%m/%d')
-    thumb_url = models.URLField(null=True, blank=True)
+    thumb_url = models.URLField(null=True, blank=True, editable=False)
     upload_date = models.DateTimeField(auto_now_add=True)
 
     @property
@@ -30,6 +44,30 @@ class File(models.Model):
 
     def __unicode__(self):
         return self.filename
+
+    def __html__(self):
+        if not self.pk:
+            url = self.document.file.temporary_file_path()
+        else:
+            url = self.document.url
+        # Should be format HTML in > 1.4
+        return mark_safe(u'<a href="%s">%s</a>' % (escape(url),
+                         escape(self.filename)))
+
+    def pre_save(self):
+        # Used by M2MUpload view to populate object for display
+        if not self.pk:
+            self.filename = self.document.name
+
+    def save(self, *args, **kwargs):
+        self.pre_save()
+        super(File, self).save(*args, **kwargs)
+        try:
+            image = get_thumbnail(self.document, "80x80", quality=50)
+            self.thumb_url = image.url
+        except (IOError, OverflowError):
+            # Image not recognized by sorl
+            pass
 
 
 class FileSet(models.Model):

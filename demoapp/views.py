@@ -15,7 +15,6 @@ import uuid
 class MultiuploadMixin(object):
     def get_form(self, form_class):
         form = super(MultiuploadMixin, self).get_form(form_class)
-        import ipdb; ipdb.set_trace()
         self.authenticator = MultiuploadAuthenticator(self.request,
                                                       self.object)
         try:

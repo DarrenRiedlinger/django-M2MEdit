@@ -4,6 +4,7 @@
 from django.conf import settings
 # for generating json
 from django.utils import simplejson
+from django.utils.encoding import smart_unicode
 # for loading template
 from django.template import Context, loader
 # for csrf
@@ -13,30 +14,35 @@ from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseRedire
 # for os manipulations
 import os
 from django.views.generic import CreateView
+from django.views.generic.edit import FormMixin
 from django.utils.translation import ugettext as _
 from django.http import Http404
 from django.core.signing import BadSignature, SignatureExpired
-from django.core.exceptions import PermissionDenied, SuspiciousOperation
+from django.core.exceptions import PermissionDenied, SuspiciousOperation, ObjectDoesNotExist
 
 from upload.forms import FileUploadForm, FileSetForm
-from upload.models import FileSet, File
+from upload.models import FileSet, File, M2MObject
 from django.shortcuts import render_to_response, render
 from django.template import RequestContext
 from django.core.urlresolvers import reverse
 from django.conf import settings
-
+from django.core.files.uploadhandler import TemporaryFileUploadHandler
 from sorl.thumbnail import get_thumbnail
 
 from functools import partial
 
 COOKIE_LIFETIME = getattr(settings, 'UPLOAD_COOKIE_LIFETIME', 300)
 
-from upload.storage import CookieStorage
+from upload.storage import CookieStorage, SessionStorage
+from upload.forms import CheckboxSelectFiles
 from django import forms
+import pickle
 
 
 class M2MEdit(CreateView):
+    #template_name_suffix = '_m2m_form.html'
     template_name = 'upload_form.html'
+    storage_class = SessionStorage
     #def get_form_class(self):
     #    if self.object:
     #        return partial(FileSetForm, self.object.pk)
@@ -44,97 +50,124 @@ class M2MEdit(CreateView):
 
     def get_sucess_url(self):
         # There is no success url, we just redirect back to GET
-        return reverse('edit_fileset', kwargs=self.kwargs)
-
-    def get_queryset(self):
-        return FileSet.objects.all()
+        return HttpResponseRedirect('')
 
     def get_form_kwargs(self, **kwargs):
-        keywords = super(M2MEdit, self).get_form_kwargs()
+        """
+        Override get_form_kwargs to itself take kwargs.
+        """
+        # our ListForm can't handle the 'instance' kwarg, so we don't call
+        # ModelFormMixin as super
+        keywords = FormMixin.get_form_kwargs(self)
         keywords.update(kwargs)
         return keywords
 
-    def get_list_form_class(queryset):
-        return type('ListForm', (forms.Form,),
-                dict(existing_objects = forms.ModelMultipleChoiceField(
-                    queryset=queryset,
-                    widget=forms.CheckboxInput)))
-
-    def get(self, request, *args, **kwargs):
-        self.uid = kwargs['uid']
-        self.object = None
-        self.storage = CookieStorage()
+    def get_forms(self):
         import ipdb; ipdb.set_trace()
-        token = self.storage.load(self.uid, request)
-        module = __import__(token.model_module,
-                            fromlist=[token.model_class_name])
-        self.model = getattr(module, token.model_class_name)
+        module = __import__(self.token.model_module,
+                            fromlist=[self.token.model_class_name])
+        self.model = getattr(module, self.token.model_class_name)
         CreationForm = self.get_form_class()
         creation_form = CreationForm(**self.get_form_kwargs(
             prefix='creation'))
-        if token.pks:
-            queryset = self.model._default_manager.filer(pk__in=token.pks)
-            ListForm = self.get_list_form_class(queryset)
-            list_form = ListForm(**self.get_form_kwargs(prefix='list'))
+        if self.token.pks:
+            list_form = self.get_list_form()
         else:
             list_form = None
+        return creation_form, list_form
+
+    def get_list_form(self):
+        # token.pks contains a list of both integers (representing pks)
+        # and unsaved model instances.  We need to transform this into
+        # something our choice field can represent.
+        choices = []
+        for index, pk in enumerate(self.token.pks):
+            if isinstance(pk, int):
+                try:
+                    obj = self.model._default_manager.get(pk=pk)
+                except ObjectDoesNotExist:
+                    # Someone else deleted the object.  We'll just skip it
+                    continue
+            else:
+                #our pk is actually an unsaved object
+                obj = pickle.loads(pk)
+            choices.append((index, self.label_from_instance(obj)))
+
+        list_form_class = type('ListForm', (forms.Form,),
+                dict(existing_objects = forms.MultipleChoiceField(
+                    choices=choices, required=False,
+                    widget=forms.CheckboxSelectMultiple)))
+        return list_form_class(**self.get_form_kwargs(prefix='list'))
+
+    def label_from_instance(self, instance):
+        """
+        This method is used to convert objects into strings; it's used to
+        generate the labels for the choices presented by this object in the
+        list form. Subclass can override this method to customize the display
+        of the choices.  Alternatively, using the default implementation, you
+        can define a '__html__' method on your model and generate the label
+        there. If __html__ is not specified, the __unicode__ method will be
+        used in stead.  A potential issue arises is if your model has fields
+        which are not included in the modelform used here, but which normally
+        get set in an overidden models.Model.save() call. In this case,
+        __unicode__ or __html__ would raise an AttributeError.  Therefore, you
+        can optionally define a pre_save() method, which will be called on
+        each uncommitted instance following form validation.
+        """
+        # TODO: CAN WE TRUST __html__ has been properly escaped?
+        if hasattr(instance, '__html__'):
+            return instance.__html__()
+        else:
+            return smart_unicode(instance)
+
+    def get(self, request, *args, **kwargs):
+        import ipdb; ipdb.set_trace()
+        self.storage = self.storage_class(request)
+        self.uid = kwargs['uid']
+        self.token = self.storage._get(self.uid)
+        self.object = None
+        creation_form, list_form = self.get_forms()
         return self.render_to_response(self.get_context_data(
             creation_form=creation_form, list_form=list_form))
 
     def post(self, request, *args, **kwargs):
-        # verify cookie 
-        try:
-            self.object = self.get_object()
-        except (AttributeError, ValueError):
-            self.object = None
-        form_class = self.get_form_class()
-        form = self.get_form(form_class)
-        if form.is_valid():
-            self.save_form(form)
-            return self.form_valid(form)
+        # TODO: will need to further modify TemporaryUploadedFile class to
+        # customize where this app's temp files are stored.
+
+        # Prevent file from being uploaded in-memory.  This is so we can
+        # serve the file before it is saved.
+        request.upload_handlers = [TemporaryFileUploadHandler()]
+
+        self.storage = self.storage_class(request)
+        self.uid = kwargs['uid']
+        import ipdb; ipdb.set_trace()
+        self.token = self.storage._get(self.uid)
+        self.object = None
+        creation_form, list_form = self.get_forms()
+        if (creation_form.is_valid() and
+           (list_form is None or list_form.is_valid())):
+            return self.form_valid(creation_form, list_form)
         else:
-            return self.form_invalid(form)
+            import ipdb; ipdb.set_trace()
+            return self.form_invalid(creation_form, list_form)
 
-    def save_form(self, form):
-        # TODO: Will need to store max size and mimetype
-        # in session, and then verify here
-        error = False
-        if self.object is None:
-            self.object = FileSet()
-            self.object.save()
-        else:
-            ([self.object.files.remove(f.pk) for f in
-                form.cleaned_data['current_files']])
-        if self.request.FILES:
-            newfile = File(document=self.request.FILES['file_upload'])
-            # After save, document.name gets appended to path and possibly
-            # gets appended with a version number.  We're saving the original
-            # filename here for easy acess without having to strip the path and
-            # version number.
-            # TODO: Do I need to escape the original filename?
-            newfile.filename = newfile.document.name
-            newfile.save()
-            try:
-                image = get_thumbnail(newfile.document, "80x80", quality=50)
-                newfile.thumb_url = image.url
-                newfile.save()
-            except (IOError, OverflowError):
-                # Image not recognized by sorl
-                pass
-
-            self.object.files.add(newfile)
-        self.object.save()
-
-    def form_valid(self, form):
-        response = HttpResponseRedirect(self.get_sucess_url())
-        # update cookie
-        return response
-   
-    def form_invalid(self, form):
-        response = super(FileSetMixin, self).form_invalid(form)
-        # update cookie
+    def form_valid(self, creation_form, list_form):
+        import ipdb; ipdb.set_trace()
+        selected = list_form.cleaned_data['existing_objects']
+        self.token.pks = [item for i, item in enumerate(self.token.pks) if
+                str(i) not in selected]
+        obj = creation_form.save(commit=False)
+        if hasattr(obj, 'pre_save'):
+            obj.pre_save()
+        pickled_obj = pickle.dumps(obj)
+        self.token.pks.append(pickled_obj)
+        response = HttpResponseRedirect('')
+        self.storage._store([self.token], response=response)
         return response
 
+    def form_invalid(self, creation_form, list_form):
+        return self.render_to_response(self.get_context_data(
+                creation_form=creation_form, list_form=list_form))
 
 
 def edit_file_set(request, file_set_pk):

@@ -1,5 +1,5 @@
 from django.core.exceptions import SuspiciousOperation
-from upload.storage import CookieStorage, FileSetToken, make_token
+from upload.storage import SessionStorage, CookieStorage, FileSetToken, make_token
 from upload.fields import MultiUploaderField
 
 # NB: If, for some reason, your app uses the same form class to edit
@@ -20,9 +20,10 @@ from upload.fields import MultiUploaderField
 
 
 class MultiuploadAuthenticator(object):
-    storage = CookieStorage()
+    storage_class = SessionStorage
 
     def __init__(self, request, obj=None):
+        self.storage = self.storage_class(request)
         self.request = request
         self.object = obj
         self.tokens = []
@@ -52,14 +53,14 @@ class MultiuploadAuthenticator(object):
                     uid = self.form.data[label + '_0']  # MultiWidget 0 is uid
                 except KeyError:
                     raise SuspiciousOperation(
-                            "User deleted hidden field %s of %s.%s" % (
+                            "User did not POST  hidden field %s of %s.%s" % (
                                 label,
                                 self.form.__module__,
                                 self.form.__class__.__name__
                             )
                     )
                 # Get token. Let storage riase exception if need be
-                token = self.storage.load(uid, self.request)
+                token = self.storage._get(uid, self.request)
 
                 # Make sure user isn't substituting a token
                 # created by another form (e.g. to use another form
@@ -106,7 +107,7 @@ class MultiuploadAuthenticator(object):
                 self.tokens.append(make_token(uid, pks, self.form, label))
 
     def update_response(self, response):
-        self.storage.add(self.tokens, response, self.request)
+        self.storage._store(self.tokens, response, self.request)
 
     def remove_tokens(self, response):
         self.storage.remove(self.tokens, response)
