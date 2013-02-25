@@ -1,5 +1,5 @@
 from django.core.exceptions import SuspiciousOperation
-from upload.storage import SessionStorage, CookieStorage, FileSetToken, make_token
+from upload.storage import SessionStorage, FileSetToken, make_token
 from upload.fields import MultiUploaderField
 
 # NB: If, for some reason, your app uses the same form class to edit
@@ -22,11 +22,13 @@ from upload.fields import MultiUploaderField
 class MultiuploadAuthenticator(object):
     storage_class = SessionStorage
 
-    def __init__(self, request, obj=None):
+    def __init__(self, request, form, obj=None, patch_form_validation=True):
         self.storage = self.storage_class(request)
         self.request = request
         self.object = obj
         self.tokens = []
+        self.form = form
+        self.prep_form(patch_form_validation)
 
     @property
     def multiuploader_fields(self):
@@ -41,8 +43,7 @@ class MultiuploadAuthenticator(object):
                                               MultiUploaderField)}
         return self._multiuploader_fields
 
-    def prep_form(self, form):
-        self.form = form
+    def prep_form(self, patch_form_validation):
         """
         Prepare a form for validation
         """
@@ -92,6 +93,9 @@ class MultiuploadAuthenticator(object):
                 # Add token, so it will be updated (needed if form fails
                 # validation)
                 self.tokens.append(token)
+
+            if patch_form_validation is True:
+                self.patch_form_validation()
         # form is not bound. A GET request
         else:
             for label, field in self.multiuploader_fields.iteritems():
@@ -105,9 +109,33 @@ class MultiuploadAuthenticator(object):
                 except KeyError:
                     uid, pks = field.initial
                 self.tokens.append(make_token(uid, pks, self.form, label))
+            self.update_response()
 
-    def update_response(self, response):
-        self.storage._store(self.tokens, response, self.request)
+    def update_response(self):
+        self.storage._store(self.tokens)
 
-    def remove_tokens(self, response):
-        self.storage.remove(self.tokens, response)
+    def remove_tokens(self):
+        self.storage._remove(self.tokens)
+
+    def patch_form_validation(self):
+        """
+        Following form validation, we either need to remove our tokens if the
+        form was valid, or update the tokens (in case the storage has an
+        expiration) when the form is invalid.  This can be done by modifying
+        the view to include calls to update_response and remove_tokens,
+        respectively.  But, if you have many views to update this gets
+        unwieldy.  Creating a special Form subclass is a possibility, but you
+        still need to pass the request into the form.  Alternatively, we can
+        have our call to prep_form also take care of overriding the form's
+        is_valid method.  That is what this method is for.
+        """
+        original_is_valid = self.form.is_valid
+
+        def new_is_valid():
+            if original_is_valid():
+                self.remove_tokens()
+                return True
+            else:
+                self.update_tokens()
+                return False
+        self.form.is_valid = new_is_valid
