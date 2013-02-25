@@ -5,3 +5,4 @@
 djangoupload.db
 media/*
 *.swo
+.ropeproject
