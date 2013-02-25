@@ -25,6 +25,7 @@ class MultiuploadMixin(object):
         return form
 
     def get(self, request, *args, **kwargs):
+        import ipdb; ipdb.set_trace()
         response = super(MultiuploadMixin, self).get(request, *args,
                                                      **kwargs)
         if hasattr(self, 'authenticator'):

@@ -62,7 +62,10 @@ class BaseStorage(object):
     def _get(self, key, *args, **kwargs):
         raise NotImplementedError()
 
-    def _store(self, token, response=None):
+    def _store(self, token, *args, **kwargs):
+        raise NotImplementedError()
+
+    def _remove(self, token, *args, **kwargs):
         raise NotImplementedError()
 
 
@@ -94,7 +97,7 @@ class SessionStorage(BaseStorage):
             key = ''.join((self.prefix, token.uid))
             self.request.session[key] = token
 
-    def _remove(self, tokens, response, *args, **kwargs):
+    def _remove(self, tokens, *args, **kwargs):
         for token in tokens:
             key = ''.join((self.prefix, token.uid))
             self.request.session.pop(key, None)

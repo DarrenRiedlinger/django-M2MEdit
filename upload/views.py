@@ -84,7 +84,6 @@ class M2MEdit(CreateView):
         return keywords
 
     def get_forms(self):
-        import ipdb; ipdb.set_trace()
         module = __import__(self.token.model_module,
                             fromlist=[self.token.model_class_name])
         self.model = getattr(module, self.token.model_class_name)
@@ -103,7 +102,6 @@ class M2MEdit(CreateView):
                                                queryset=queryset))
 
     def get(self, request, *args, **kwargs):
-        import ipdb; ipdb.set_trace()
         self.storage = self.storage_class(request)
         self.uid = kwargs['uid']
         self.token = self.storage._get(self.uid)
@@ -122,7 +120,6 @@ class M2MEdit(CreateView):
 
         self.storage = self.storage_class(request)
         self.uid = kwargs['uid']
-        import ipdb; ipdb.set_trace()
         self.token = self.storage._get(self.uid)
         self.object = None
         creation_form, list_form = self.get_forms()
@@ -130,15 +127,13 @@ class M2MEdit(CreateView):
            (list_form is None or list_form.is_valid())):
             return self.form_valid(creation_form, list_form)
         else:
-            import ipdb; ipdb.set_trace()
             return self.form_invalid(creation_form, list_form)
 
     def form_valid(self, creation_form, list_form):
-        import ipdb; ipdb.set_trace()
         if list_form and list_form.has_changed():
             selected = set([obj.pk for obj in
                         list_form.cleaned_data['existing_objects']])
-            self.token.pks = set(self.token.pks) - selected
+            self.token.pks = list(set(self.token.pks) - selected)
             # immediately delete any selected instances selected that were
             # uploaded during this same M2M edit 
             delete_pks = selected - set(self.token.original_pks)
