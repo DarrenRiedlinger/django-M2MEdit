@@ -36,7 +36,7 @@ COOKIE_LIFETIME = getattr(settings, 'UPLOAD_COOKIE_LIFETIME', 300)
 from upload.storage import CookieStorage, SessionStorage
 from upload.forms import CheckboxSelectFiles
 from django import forms
-
+from django.template.response import TemplateResponse
 
 class CustomModelMultipleChoiceField(forms.ModelMultipleChoiceField):
     """
@@ -63,6 +63,7 @@ class ListForm(forms.Form):
 class M2MEdit(CreateView):
     #template_name_suffix = '_m2m_form.html'
     template_name = 'upload_form.html'
+    missing_cookie_template = 'missing_cookie.html'
     storage_class = SessionStorage
     #def get_form_class(self):
     #    if self.object:
@@ -102,10 +103,13 @@ class M2MEdit(CreateView):
                                                queryset=queryset))
 
     def get(self, request, *args, **kwargs):
+        self.object = None
         self.storage = self.storage_class(request)
         self.uid = kwargs['uid']
         self.token = self.storage._get(self.uid)
-        self.object = None
+        if not self.token:
+            return self.render_to_response(self.get_context_data(
+                                           error='cookies'))
         creation_form, list_form = self.get_forms()
         return self.render_to_response(self.get_context_data(
             creation_form=creation_form, list_form=list_form))
@@ -114,14 +118,15 @@ class M2MEdit(CreateView):
         # TODO: will need to further modify TemporaryUploadedFile class to
         # customize where this app's temp files are stored.
 
-        # Prevent file from being uploaded in-memory.  This is so we can
-        # serve the file before it is saved.
-        request.upload_handlers = [TemporaryFileUploadHandler()]
-
+        self.object = None
         self.storage = self.storage_class(request)
         self.uid = kwargs['uid']
         self.token = self.storage._get(self.uid)
-        self.object = None
+        # Most likely because they hit the back button after submitting parent
+        # form.
+        if not self.token:
+            return self.render_to_response(self.get_context_data(
+                                           error='expired'))
         creation_form, list_form = self.get_forms()
         if (creation_form.is_valid() and
            (list_form is None or list_form.is_valid())):
@@ -135,7 +140,7 @@ class M2MEdit(CreateView):
                         list_form.cleaned_data['existing_objects']])
             self.token.pks = list(set(self.token.pks) - selected)
             # immediately delete any selected instances selected that were
-            # uploaded during this same M2M edit 
+            # uploaded during this same M2M edit
             delete_pks = selected - set(self.token.original_pks)
             self.model._default_manager.filter(pk__in=delete_pks).delete()
         # If anything was submitted to the creation form
