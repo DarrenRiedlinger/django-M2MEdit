@@ -1,1 +1,21 @@
-{{ object }}
+{% load thumbnail %}
+<h1>{{ object }}</h1>
+
+<h2>Attachments:</h2>
+<table>
+{% for file in object.attachments.all %}
+<tr>
+{% thumbnail file.document "50x50" as im %}
+<td><img src="{{ im.url }}"></td>
+<td><a href="{{file.url}}">{{file.filename}}</a></td>
+<td>{{ file.document.size|filesizeformat }}</td>
+{% empty %}
+<td></td>
+<td><a href="{{file.url}}">{{file.filename}}</a></td>
+<td>{{ file.document.size|filesizeformat }}</td>
+{% endthumbnail %}
+</tr>
+{% endfor %}
+</table>
+
+	
