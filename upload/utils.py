@@ -136,6 +136,6 @@ class MultiuploadAuthenticator(object):
                 self.remove_tokens()
                 return True
             else:
-                self.update_tokens()
+                self.update_response()
                 return False
         self.form.is_valid = new_is_valid
