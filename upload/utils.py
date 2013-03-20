@@ -2,6 +2,11 @@ from django.core.exceptions import SuspiciousOperation
 from upload.storage import SessionStorage, FileSetToken, make_token, TokenError
 from upload.fields import MultiUploaderField
 from django.shortcuts import render
+from django.conf import settings
+STORAGE_CLASS = getattr(settings, 'UPLOAD_STORAGE', 'upload.storage.SessionStorage')
+mod, klass = STORAGE_CLASS.rsplit('.', 1)
+mod = __import__(mod, fromlist=[klass])
+STORAGE_CLASS = getattr(mod, klass)
 
 # NB: If, for some reason, your app uses the same form class to edit
 # multiple models, for newly created model instances
@@ -21,7 +26,7 @@ from django.shortcuts import render
 
 
 class MultiuploadAuthenticator(object):
-    storage_class = SessionStorage
+    storage_class = STORAGE_CLASS
 
     def __init__(self, request, form, obj=None, patch_form_validation=True):
         self.storage = self.storage_class(request)

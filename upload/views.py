@@ -39,6 +39,11 @@ from upload.storage import TokenError
 from django import forms
 from django.template.response import TemplateResponse
 
+STORAGE_CLASS = getattr(settings, 'UPLOAD_STORAGE', 'upload.storage.SessionStorage')
+mod, klass = STORAGE_CLASS.rsplit('.', 1)
+mod = __import__(mod, fromlist=[klass])
+STORAGE_CLASS = getattr(mod, klass)
+
 class CustomModelMultipleChoiceField(forms.ModelMultipleChoiceField):
     """
     A ModelMultipleChoiceField that optionally uses a model's __html__() method
@@ -65,7 +70,7 @@ class M2MEdit(CreateView):
     #template_name_suffix = '_m2m_form.html'
     template_name = 'upload_form.html'
     missing_cookie_template = 'missing_cookie.html'
-    storage_class = SessionStorage
+    storage_class = STORAGE_CLASS
     #def get_form_class(self):
     #    if self.object:
     #        return partial(FileSetForm, self.object.pk)
