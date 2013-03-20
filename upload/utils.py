@@ -1,6 +1,7 @@
 from django.core.exceptions import SuspiciousOperation
-from upload.storage import SessionStorage, FileSetToken, make_token
+from upload.storage import SessionStorage, FileSetToken, make_token, TokenError
 from upload.fields import MultiUploaderField
+from django.shortcuts import render
 
 # NB: If, for some reason, your app uses the same form class to edit
 # multiple models, for newly created model instances
@@ -60,7 +61,8 @@ class MultiuploadAuthenticator(object):
                                 self.form.__class__.__name__
                             )
                     )
-                # Get token. Let storage riase exception if need be
+                # Storage will rasie TokenError, TokenExpired, or
+                # SuspicousOperation
                 token = self.storage._get(uid, self.request)
 
                 # Make sure user isn't substituting a token

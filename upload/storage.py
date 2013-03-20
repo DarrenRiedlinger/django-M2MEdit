@@ -4,6 +4,21 @@ from django.core.exceptions import PermissionDenied, SuspiciousOperation
 import json
 # Mutable, named tuples
 from recordtype import recordtype
+from django.core.exceptions import PermissionDenied
+
+
+class TokenError(PermissionDenied):
+    """
+    Could be that cookies are disabled, the token has expired, or the user
+    is posting without first recieving a validation cookie
+    """
+    pass
+
+class TokenExpired(TokenError):
+    """
+    For specific instances when we know the user has the token, but it has expired
+    """
+    pass
 
 # It's tempting to just store the form itself, and
 # serialize/deserialize it using form.__class__ and
@@ -74,13 +89,13 @@ class BaseStorage(object):
 #         if not isinstance(obj, FileSetToken):
 #             raise TypeError('Encoder must be passed a FileSetToken recordtype')
 #         return super(TokenEncoder, self).default([v for v in obj])
-# 
-# 
+#
+#
 # class TokenDecoder(json.JSONDecoder):
-# 
+#
 #     def __init__(self):
 #         json.JSONDecoder.__init__(self, object_hook=self.list_to_object)
-# 
+#
 #     def list_to_object(self, l):
 #         args = [v for v in l]
 #         return FileSetToken(*args)
@@ -90,7 +105,16 @@ class SessionStorage(BaseStorage):
 
     def _get(self, key, *args, **kwargs):
         key = ''.join((self.prefix, key))
-        return self.request.session.get(key)
+        token = self.request.session.get(key)
+        if not token:
+            if not self.request.session.session_key:
+                raise TokenError("You must have cookies enabled to submit this "
+                                 "form. Please enable cookies, reload this "
+                                 "page and try again.")
+            else:
+                raise TokenExpired("Sorry, your sesion has expired.  Please "
+                                   "reload this page and try again.")
+        return token
 
     def _store(self, tokens, *args, **kwargs):
         for token in tokens:
@@ -154,7 +178,7 @@ class CookieStorage(BaseStorage):
                                     'page and try again'))
         except BadSignature:
             raise SuspiciousOperation('Fileset token with key %s was tampered'
-                                       % key)       
+                                       % key)
 
         return FileSetToken(*json.loads(cookie))
 

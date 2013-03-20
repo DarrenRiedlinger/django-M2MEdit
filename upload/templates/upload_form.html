@@ -5,10 +5,8 @@
     <title>Minimal Django File Upload Example</title>   
   </head>
   <body>
-    {% if error == "expired" %}
-    <h2 class="error">Session Expired.  Please reload this page to continue.</h2>
-    {% elif error == "cookies" %}
-    <h2 class="error">You must have cookies enabled to use this form.  Please enable cookies and try again.</h2>
+    {% if exception %}
+    <h2 class="error">{{ exception.message }}</h2>
     <!-- Upload form. Note enctype attribute! -->
     {% else %}
     	<form action="" method="post" enctype="multipart/form-data">

@@ -7,7 +7,9 @@ from demoapp.forms import DemoForm
 from demoapp.models import DemoModel
 from upload.models import FileSet
 from django.core.exceptions import PermissionDenied
+from django.shortcuts import render
 from upload.utils import MultiuploadAuthenticator
+from upload.storage import TokenError
 import uuid
 # Create your views here.
 
@@ -15,11 +17,7 @@ import uuid
 class MultiuploadMixin(object):
     def get_form(self, form_class):
         form = super(MultiuploadMixin, self).get_form(form_class)
-        try:
-            MultiuploadAuthenticator(self.request, form)
-        except PermissionDenied as e:
-            import ipdb; ipdb.set_trace()
-
+        MultiuploadAuthenticator(self.request, form)
         return form
 
     #def get(self, request, *args, **kwargs):

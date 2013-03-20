@@ -35,6 +35,7 @@ COOKIE_LIFETIME = getattr(settings, 'UPLOAD_COOKIE_LIFETIME', 300)
 
 from upload.storage import CookieStorage, SessionStorage
 from upload.forms import CheckboxSelectFiles
+from upload.storage import TokenError
 from django import forms
 from django.template.response import TemplateResponse
 
@@ -106,10 +107,11 @@ class M2MEdit(CreateView):
         self.object = None
         self.storage = self.storage_class(request)
         self.uid = kwargs['uid']
-        self.token = self.storage._get(self.uid)
-        if not self.token:
+        try:
+            self.token = self.storage._get(self.uid)
+        except TokenError as e:
             return self.render_to_response(self.get_context_data(
-                                           error='cookies'))
+                                           exception=e))
         creation_form, list_form = self.get_forms()
         return self.render_to_response(self.get_context_data(
             creation_form=creation_form, list_form=list_form))
@@ -121,12 +123,13 @@ class M2MEdit(CreateView):
         self.object = None
         self.storage = self.storage_class(request)
         self.uid = kwargs['uid']
-        self.token = self.storage._get(self.uid)
+        try:
+            self.token = self.storage._get(self.uid)
         # Most likely because they hit the back button after submitting parent
         # form.
-        if not self.token:
+        except TokenError as e:
             return self.render_to_response(self.get_context_data(
-                                           error='expired'))
+                                           exception=e))
         creation_form, list_form = self.get_forms()
         if (creation_form.is_valid() and
            (list_form is None or list_form.is_valid())):
