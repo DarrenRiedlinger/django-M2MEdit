@@ -11,15 +11,8 @@ from django_webtest import WebTest
 from webtest import Upload
 import shutil
 import tempfile
-from django.core.files.base import ContentFile
-from upload.models import File
+from upload.tests.model_factory import file_factory
 from demoapp.models import DemoModel
-
-
-def filemodel_factory(file_name='foo.txt', content=b'contents'):
-#    file = ContentFile(content, name=file_name)
-    file = ContentFile(content, name=file_name)
-    return File.objects.create(document=file)
 
 
 def demomodel_factory(n_attachments=1, **kwargs):
@@ -31,7 +24,7 @@ def demomodel_factory(n_attachments=1, **kwargs):
         attachments = []
         for i in range(n_attachments):
             attachments.append(
-                filemodel_factory(file_name='%s.txt' % i,
+                file_factory(file_name='%s.txt' % i,
                                   content=b'%s_contents' % i,
                                   )
             )

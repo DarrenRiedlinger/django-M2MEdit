@@ -99,6 +99,7 @@ class MultiuploadAuthenticator(object):
                         [str(pk) for pk in token.pks])
                 # Add token, so it will be updated (needed if form fails
                 # validation)
+                # TODO: is this redundant with patch form?
                 self.tokens.append(token)
 
             if patch_form_validation is True:
@@ -115,6 +116,8 @@ class MultiuploadAuthenticator(object):
                 # No dynamic initial value on form
                 except KeyError:
                     uid, pks = field.initial
+                # TODO: If were passing self.form to make_token, make_token
+                # should take care of getting pks and uid
                 self.tokens.append(make_token(uid, pks, self.form, label))
             self.update_response()
 
