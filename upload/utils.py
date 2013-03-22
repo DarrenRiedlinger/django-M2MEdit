@@ -1,8 +1,10 @@
-from django.core.exceptions import SuspiciousOperation
-from upload.storage import SessionStorage, FileSetToken, make_token, TokenError
-from upload.fields import MultiUploaderField
-from django.shortcuts import render
 from django.conf import settings
+from django.core.exceptions import SuspiciousOperation
+
+from upload.fields import MultiUploaderField
+from upload.storage import make_token
+
+
 STORAGE_CLASS = getattr(settings, 'UPLOAD_STORAGE', 'upload.storage.SessionStorage')
 mod, klass = STORAGE_CLASS.rsplit('.', 1)
 mod = __import__(mod, fromlist=[klass])

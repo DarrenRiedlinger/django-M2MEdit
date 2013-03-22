@@ -4,18 +4,16 @@ when you run "manage.py test".
 
 Replace this with more appropriate tests for your application.
 """
-
-from django.test import TestCase
-from django.test.utils import override_settings
-from django_webtest import WebTest
-from webtest import Upload
 import shutil
 import tempfile
-from django.core.files.base import ContentFile
-from django.core.files.storage import default_storage
-from upload.tests.model_factory import file_factory
+
 from demoapp.models import DemoModel
+from django.core.files.storage import default_storage
+from django.test.utils import override_settings
 from django.utils.functional import empty
+from django_webtest import WebTest
+from upload.tests.model_factory import file_factory
+from webtest import Upload
 
 
 def demomodel_factory(n_attachments=1, **kwargs):

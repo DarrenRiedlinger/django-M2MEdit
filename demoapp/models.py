@@ -1,6 +1,6 @@
+from django.core.urlresolvers import reverse
 from django.db import models
 from upload.modelfields import FileSetField
-from django.core.urlresolvers import reverse
 
 
 class DemoModel(models.Model):

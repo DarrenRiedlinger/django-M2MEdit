@@ -1,6 +1,8 @@
 from django.conf.urls.defaults import *
 from django.views.decorators.csrf import csrf_exempt
+
 from upload.views import M2MEdit
+
 
 urlpatterns = patterns('upload.views',
 
