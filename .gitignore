@@ -8,3 +8,4 @@ media/*
 .ropeproject
 htmlcov/*
 report.txt
+.coverage
