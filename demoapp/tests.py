@@ -11,8 +11,11 @@ from django_webtest import WebTest
 from webtest import Upload
 import shutil
 import tempfile
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 from upload.tests.model_factory import file_factory
 from demoapp.models import DemoModel
+from django.utils.functional import empty
 
 
 def demomodel_factory(n_attachments=1, **kwargs):
@@ -36,10 +39,9 @@ class IntegrationTest(WebTest):
     TEMP_MEDIA_ROOT = tempfile.mkdtemp()
 
     def setUp(self):
-        #self.old_media_root = settings.MEDIA_ROOT
-        #self.temp_media_root = tempfile.mkdtemp()
-        #settings.MEDIA_ROOT = self.temp_media_root
-        pass
+        # See bug https://code.djangoproject.com/ticket/17744
+        # Not necessary in >= 1.5
+        default_storage._wrapped = empty
 
     def tearDown(self):
         #settings.MEDIA_ROOT = self.old_media_root

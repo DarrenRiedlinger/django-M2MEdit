@@ -6,16 +6,33 @@ Replace this with more appropriate tests for your application.
 """
 
 from django.test import TestCase
-from django.conf import settings
 from upload.fields import MultiUploaderField
 from upload.models import File
 from upload.utils import MultiuploadAuthenticator
-from upload.storage import TokenError
+from upload.storage import TokenError, FileSetToken
+from upload.views import M2MEdit, ListForm
 from .forms import SimpleRequiredForm, DifferentRequiredForm
 from .model_factory import file_factory
 from django.test.utils import override_settings
+from django.test.client import RequestFactory
 from django.core.exceptions import SuspiciousOperation
+from django import forms
 import tempfile
+import copy
+import shutil
+from StringIO import StringIO
+
+
+BASE_TOKEN = FileSetToken(
+        uid='1234',
+        pks=[],
+        original_pks=[],
+        field_label='attachments',
+        form_class_name='SimpleRequiredForm',
+        form_module='upload.tests.forms',
+        model_class_name='File',
+        model_module='upload.models',
+        )
 
 
 class SessionDict(dict):
@@ -61,6 +78,9 @@ class MultiUploadAuthenticatorTest(TestCase):
     def setUp(self):
         self.request = MockRequest()
 
+    def tearDown(self):
+        shutil.rmtree(self.TEMP_MEDIA_ROOT, ignore_errors=True)
+
     def test_form_GET_no_initial(self):
         form = SimpleRequiredForm()
         MultiuploadAuthenticator(self.request, form)
@@ -80,15 +100,11 @@ class MultiUploadAuthenticatorTest(TestCase):
         self.assertEqual(token.uid, form.fields['attachments'].uid)
 
     def test_form_POST_invalid(self):
-        # Simulate GET so tokens are added to session
-        form = SimpleRequiredForm(initial={'attachments': [1,2,3]})
-        MultiuploadAuthenticator(self.request, form)
-        token = self.request.session.values()[0]
-
-        form = SimpleRequiredForm({'attachments_0': token.uid,
-                                   'attachments_1': '2,3,4'})
-        # Modify self.request.session token by reference
+        token = copy.deepcopy(BASE_TOKEN)
         token.pks = [2,3,4]
+        self.request.session['_uploads' + token.uid] = token
+        form = SimpleRequiredForm({'attachments_0': token.uid,
+                                   'attachments_1': '1,2'})
         MultiuploadAuthenticator(self.request, form)
         self.assertEqual(form.data['attachments_1'], '2,3,4')
         # Form will fail validation since these pks don't exist,
@@ -105,15 +121,13 @@ class MultiUploadAuthenticatorTest(TestCase):
             files.append(file_factory())
         file_pks = [f.pk for f in files]
         str_pks = ','.join([str(pk) for pk in file_pks])
-        # Simulate GET so tokens are added to session
-        form = SimpleRequiredForm(initial={'attachments': '1,2'})
-        MultiuploadAuthenticator(self.request, form)
-        token = self.request.session.values()[0]
+
+        token = copy.deepcopy(BASE_TOKEN)
+        token.pks = file_pks
+        self.request.session['_uploads' + token.uid] = token
 
         form = SimpleRequiredForm({'attachments_0': token.uid,
             'attachments_1': '1,2'})
-        # Modify self.request.session token by reference
-        token.pks = file_pks
         MultiuploadAuthenticator(self.request, form)
         self.assertEqual(form.data['attachments_1'], str_pks)
         self.assertEqual(len(self.request.session), 1)
@@ -133,11 +147,8 @@ class MultiUploadAuthenticatorTest(TestCase):
         """
         If a user is editing two forms at once and swaps their tokens
         """
-        # Simulate GET so tokens are added to session
-        form = SimpleRequiredForm(initial={'attachments': [1,2,3]})
-        MultiuploadAuthenticator(self.request, form)
-        token = self.request.session.values()[0]
-
+        token = copy.deepcopy(BASE_TOKEN)
+        self.request.session['_uploads' + token.uid] = token
         form = DifferentRequiredForm({'attachments_0': token.uid,
                                    'attachments_1': '1,2,3'})
         self.assertRaises(SuspiciousOperation,
@@ -147,6 +158,94 @@ class MultiUploadAuthenticatorTest(TestCase):
         # Simulate GET so tokens are added to session
         form = SimpleRequiredForm(initial={'attachments': [1,2,3]})
         MultiuploadAuthenticator(self.request, form)
+
         form = SimpleRequiredForm({'attachments_1': '1,2,3'})
         self.assertRaises(SuspiciousOperation,
                 MultiuploadAuthenticator, self.request, form)
+
+class UploadViewTest(TestCase):
+    TEMP_MEDIA_ROOT = tempfile.mkdtemp()
+
+    def setUp(self):
+        self.factory = RequestFactory()
+
+    def tearDown(self):
+        shutil.rmtree(self.TEMP_MEDIA_ROOT, ignore_errors=True)
+   
+    def test_empty_token_pks_GET(self):
+        token = copy.deepcopy(BASE_TOKEN)
+        request = self.factory.get('/upload/%s/' % token.uid)
+        request.session = SessionDict()
+        request.session['_uploads' + token.uid] = token
+        response = M2MEdit.as_view()(request, uid=token.uid)
+        self.assertIsInstance(response.context_data['creation_form'],
+                              forms.ModelForm)
+        self.assertIsNone(response.context_data['list_form'])
+
+    @override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
+    def test_nonempty_token_pks_GET(self):
+        files = []
+        for i in range(2):
+            files.append(file_factory())
+        file_pks = [f.pk for f in files]
+        str_pks = ','.join([str(pk) for pk in file_pks])
+        token = copy.deepcopy(BASE_TOKEN)
+        token.pks = file_pks
+
+        request = self.factory.get('/upload/%s/' % token.uid)
+        request.session = SessionDict()
+        request.session['_uploads' + token.uid] = token
+        response = M2MEdit.as_view()(request, uid=token.uid)
+        list_form = response.context_data['list_form']
+        self.assertIsInstance(list_form, ListForm)
+        self.assertEqual(set(list_form.fields['existing_objects'].queryset),
+                         set(files))
+    
+    @override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
+    def test_remove_existing_objects_POST(self):
+        files = []
+        for i in range(2):
+            files.append(file_factory())
+        file_pks = [f.pk for f in files]
+        str_pks = ','.join([str(pk) for pk in file_pks])
+        token = copy.deepcopy(BASE_TOKEN)
+        token.pks = file_pks
+
+        request = self.factory.post('/upload/%s/' % token.uid,
+                {'list-existing_objects': [str(f.pk) for f in files]})
+        request.session = SessionDict()
+        request.session['_uploads' + token.uid] = token
+        response = M2MEdit.as_view()(request, uid=token.uid)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(token.pks, [])
+
+    @override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
+    def test_create_object_POST(self):
+        token = copy.deepcopy(BASE_TOKEN)
+        upload = StringIO(b'file_contents')
+        upload.name = 'test.txt'
+        request = self.factory.post('/upload/%s/' % token.uid,
+                {'creation-document': upload}) 
+        request.session = SessionDict()
+        request.session['_uploads' + token.uid] = token
+        response = M2MEdit.as_view()(request, uid=token.uid)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(len(token.pks), 1)
+        file_obj = File.objects.get(pk=token.pks[0])
+        self.assertEqual(file_obj.filename, 'test.txt')
+    
+    def test_GET_no_token(self):
+        request = self.factory.get('/upload/%s/' % 'abcde')
+        request.session = SessionDict()
+        request.session.session_key = '12345'
+        response = M2MEdit.as_view()(request, uid='abcde')
+        self.assertIn('exception', response.context_data)
+        self.assertIsInstance(response.context_data['exception'], TokenError)
+    
+    def test_POST_no_token(self):
+        request = self.factory.post('/upload/%s/' % 'abcde')
+        request.session = SessionDict()
+        request.session.session_key = '12345'
+        response = M2MEdit.as_view()(request, uid='abcde')
+        self.assertIn('exception', response.context_data)
+        self.assertIsInstance(response.context_data['exception'], TokenError)

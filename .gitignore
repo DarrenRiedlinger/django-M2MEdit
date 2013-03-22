@@ -6,3 +6,5 @@ djangoupload.db
 media/*
 *.swo
 .ropeproject
+htmlcov/*
+report.txt
