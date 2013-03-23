@@ -1,42 +1,22 @@
-from django import forms
 from django.conf import settings
 from django.http import HttpResponseRedirect
 from django.views.generic import CreateView
 from django.views.generic.edit import FormMixin
 
 from upload.storage import TokenError
-
+from upload.forms.forms import ListForm
 
 COOKIE_LIFETIME = getattr(settings, 'UPLOAD_COOKIE_LIFETIME', 300)
 
 
-STORAGE_CLASS = getattr(settings,
-                        'UPLOAD_STORAGE', 'upload.storage.SessionStorage')
-mod, klass = STORAGE_CLASS.rsplit('.', 1)
-mod = __import__(mod, fromlist=[klass])
-STORAGE_CLASS = getattr(mod, klass)
-
-
-class CustomModelMultipleChoiceField(forms.ModelMultipleChoiceField):
-    """
-    A ModelMultipleChoiceField that optionally uses a model's __html__() method
-    to render the choice field's label.
-    """
-    def label_from_instance(self, obj):
-        if hasattr(obj, '__html__'):
-            return obj.__html__()
-        else:
-            return super(CustomModelMultipleChoiceField,
-                         self).label_from_instance(obj)
-
-
-class ListForm(forms.Form):
-    def __init__(self, queryset, *args, **kwargs):
-        super(ListForm, self).__init__(*args, **kwargs)
-        self.fields['existing_objects'] = CustomModelMultipleChoiceField(
-                                              queryset=queryset,
-                                              widget=forms.CheckboxSelectMultiple,
-                                              required=False)
+STORAGE_CLASS = getattr(
+    settings,
+    'UPLOAD_STORAGE',
+    'upload.storage.SessionStorage'
+)
+module, klass = STORAGE_CLASS.rsplit('.', 1)
+module = __import__(module, fromlist=[klass])
+STORAGE_CLASS = getattr(module, klass)
 
 
 class M2MEdit(CreateView):

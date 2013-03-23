@@ -4,7 +4,9 @@ from django.utils.safestring import mark_safe
 
 
 class File(models.Model):
-    # Model for user uploaded files
+    """
+    Model for user uploaded files.
+    """
     filename = models.CharField(max_length=255, editable=False)
     document = models.FileField(upload_to='documents/%Y/%m/%d')
     upload_date = models.DateTimeField(auto_now_add=True)

@@ -19,7 +19,7 @@ class FileSetField(models.ManyToManyField):
             kwargs['related_name'] = "_%(app_label)s_%(class)s_%(name)s_related"
         super(FileSetField, self).__init__(to, **kwargs)
         # models.ManyToManyField sets its own help_text, which we overide
-        self.help_text = getattr(kwargs, 'help_text', '') 
+        self.help_text = getattr(kwargs, 'help_text', '')
 
     def contribute_to_class(self, cls, name):
         if self.rel.related_name:

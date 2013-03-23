@@ -1,7 +1,85 @@
+from django import forms
+from django.core.urlresolvers import reverse
 from django.forms import CheckboxInput, SelectMultiple
 from django.utils.encoding import force_unicode
 from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
+
+
+class IframeUuidWidget(forms.widgets.HiddenInput):
+    """
+    Renders a hidden input containing our uuid, and an iframe containing
+    the upload view corresponding to that uuid
+    """
+    def render(self, name, value, attrs=None):
+        url = reverse('uid_upload', kwargs={'uid': value},
+                      current_app='upload')
+        # Can we include div class dynamically
+        output = u'<iframe src="%s"></iframe>' % url
+        hidden_input = super(IframeUuidWidget, self).render(name,
+                                                     value, attrs=attrs)
+        return mark_safe('\n'.join((output, hidden_input)))
+
+
+class SelectMultipleTextInput(forms.widgets.HiddenInput):
+    """
+    A text input widget customized work with a Multiple Choice Field
+    (converting between a python list and a comma-separated string).
+    """
+
+    def render(self, name, value, attrs=None):
+        if value is None: value = []
+        value = ','.join([str(v) for v in value])
+        return super(SelectMultipleTextInput, self).render(name, value, attrs)
+
+    def value_from_datadict(self, data, files, name):
+        data = data.get(name, None)
+        if not data:
+            data = []
+        else:
+            data = data.replace(' ', '').split(',')
+        return data
+
+
+class MultiUploaderIframeWidget(forms.widgets.MultiWidget):
+    """
+    A widget that renders:
+        --an iframe with a link to our fileupload form + hidden uuid input
+        --a hidden charfield containing a comma-separated list of selected
+          files
+    """
+    def __init__(self, uid, attrs=None):
+        widgets = (
+            IframeUuidWidget(attrs=attrs),
+            SelectMultipleTextInput(attrs=attrs),
+        )
+        self.uid = uid
+        super(MultiUploaderIframeWidget, self).__init__(widgets, attrs)
+
+    def decompress(self, value):
+        if value:
+            return [value[0], value[1]]
+        return [None, None]
+
+    def render(self, name, value, attrs=None):
+        """ The default render only decompresses non-lists.  However, our m2m
+        field itself is a list, but still needs to be decompressed into [uid,
+        [pks]].  This is especially important when the form is passed initial
+        data (such as {field_name: [1,2,3]}), which the default render method
+        would assume was allready decompressed
+        """
+        if (not isinstance(value, list)):
+            value = self.decompress(value)
+        # else if its not a 2-item list in which the second item is
+        # itself a list
+        elif (len(value) != 2) or (not isinstance(value[-1], list)):
+            value = [self.uid, value]
+        return super(MultiUploaderIframeWidget, self).render(name, value,
+                                                             attrs)
+
+    def format_output(self, rendered_widgets):
+        return u'<div class="Multiupload">%s</div>' % u''.join(rendered_widgets)
+
 
 class TableSelectMultiple(SelectMultiple):
     """
@@ -48,7 +126,7 @@ class TableSelectMultiple(SelectMultiple):
         has_id = attrs and 'id' in attrs
         final_attrs = self.build_attrs(attrs, name=name)
         output = [u'<table class="existing_objects_list">']
-        str_values = set([force_unicode(v) for v in value]) # Normalize to strings.
+        str_values = set([force_unicode(v) for v in value])  # Normalize to strings.
         output.append(u'<tr><th>%s</th>' % conditional_escape(self.checkbox_label))
         for label, attr in self.item_attrs:
             output.append(u'<th>%s</th>' % conditional_escape(label))

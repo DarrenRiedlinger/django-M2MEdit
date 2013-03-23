@@ -9,7 +9,3 @@ class DemoModel(models.Model):
 
     def get_absolute_url(self):
         return reverse('crud_detail', args=[self.pk])
-
-    #def __unicode__(self):
-    #    return u'Sometext:%s Attachments pk:%s' % (self.sometext,
-    #                                               self.attachments)

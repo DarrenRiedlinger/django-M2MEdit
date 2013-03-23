@@ -1,26 +1,21 @@
-"""
-This file demonstrates writing tests using the unittest module. These will pass
-when you run "manage.py test".
-
-Replace this with more appropriate tests for your application.
-"""
-
-from django.test import TestCase
-from upload.fields import MultiUploaderField
-from upload.models import File
-from upload.utils import MultiuploadAuthenticator
-from upload.storage import TokenError, FileSetToken
-from upload.views import M2MEdit, ListForm
-from .forms import SimpleRequiredForm, DifferentRequiredForm
-from .model_factory import file_factory
-from django.test.utils import override_settings
-from django.test.client import RequestFactory
-from django.core.exceptions import SuspiciousOperation
-from django import forms
-import tempfile
 import copy
 import shutil
+import tempfile
 from StringIO import StringIO
+
+from django import forms
+from django.core.exceptions import SuspiciousOperation
+from django.test import TestCase
+from django.test.client import RequestFactory
+from django.test.utils import override_settings
+from upload.fields import MultiUploaderField
+from upload.models import File
+from upload.storage import TokenError, FileSetToken
+from upload.utils import MultiuploadAuthenticator
+from upload.views import M2MEdit, ListForm
+
+from .forms import SimpleRequiredForm, DifferentRequiredForm
+from .model_factory import file_factory
 
 
 BASE_TOKEN = FileSetToken(
@@ -136,13 +131,13 @@ class MultiUploadAuthenticatorTest(TestCase):
         self.assertEqual(len(self.request.session), 0)
         self.assertEqual(set(form.cleaned_data['attachments']),
                          set(files))
-    
+
     def test_form_POST_no_token(self):
         form = SimpleRequiredForm({'attachments_0': 'a_uid',
                                    'attachments_1': '1,2'})
         self.assertRaises(TokenError, MultiuploadAuthenticator, self.request,
                           form)
-    
+
     def test_form_POST_switched_form(self):
         """
         If a user is editing two forms at once and swaps their tokens
@@ -153,7 +148,7 @@ class MultiUploadAuthenticatorTest(TestCase):
                                    'attachments_1': '1,2,3'})
         self.assertRaises(SuspiciousOperation,
                 MultiuploadAuthenticator, self.request, form)
-    
+
     def test_form_POST_no_uid(self):
         # Simulate GET so tokens are added to session
         form = SimpleRequiredForm(initial={'attachments': [1,2,3]})
@@ -171,7 +166,7 @@ class UploadViewTest(TestCase):
 
     def tearDown(self):
         shutil.rmtree(self.TEMP_MEDIA_ROOT, ignore_errors=True)
-   
+
     def test_empty_token_pks_GET(self):
         token = copy.deepcopy(BASE_TOKEN)
         request = self.factory.get('/upload/%s/' % token.uid)
@@ -200,7 +195,7 @@ class UploadViewTest(TestCase):
         self.assertIsInstance(list_form, ListForm)
         self.assertEqual(set(list_form.fields['existing_objects'].queryset),
                          set(files))
-    
+
     @override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
     def test_remove_existing_objects_POST(self):
         files = []
@@ -225,7 +220,7 @@ class UploadViewTest(TestCase):
         upload = StringIO(b'file_contents')
         upload.name = 'test.txt'
         request = self.factory.post('/upload/%s/' % token.uid,
-                {'creation-document': upload}) 
+                {'creation-document': upload})
         request.session = SessionDict()
         request.session['_uploads' + token.uid] = token
         response = M2MEdit.as_view()(request, uid=token.uid)
@@ -233,7 +228,7 @@ class UploadViewTest(TestCase):
         self.assertEqual(len(token.pks), 1)
         file_obj = File.objects.get(pk=token.pks[0])
         self.assertEqual(file_obj.filename, 'test.txt')
-    
+
     def test_GET_no_token(self):
         request = self.factory.get('/upload/%s/' % 'abcde')
         request.session = SessionDict()
@@ -241,7 +236,7 @@ class UploadViewTest(TestCase):
         response = M2MEdit.as_view()(request, uid='abcde')
         self.assertIn('exception', response.context_data)
         self.assertIsInstance(response.context_data['exception'], TokenError)
-    
+
     def test_POST_no_token(self):
         request = self.factory.post('/upload/%s/' % 'abcde')
         request.session = SessionDict()
