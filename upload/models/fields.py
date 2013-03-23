@@ -44,6 +44,6 @@ class FileSetField(models.ManyToManyField):
 # South custom field introspection
 try:
     from south.modelsinspector import add_introspection_rules
-    add_introspection_rules([], ['^upload\.modelfields\.FileSetField'])
+    add_introspection_rules([], ['^upload\.models\.fields\.FileSetField'])
 except ImportError:
     pass

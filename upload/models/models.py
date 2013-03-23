@@ -28,3 +28,6 @@ class File(models.Model):
             # potentially modifies it
             self.filename = self.document.name
         super(File, self).save(*args, **kwargs)
+
+    class Meta:
+        app_label = 'upload'

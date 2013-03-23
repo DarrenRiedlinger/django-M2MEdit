@@ -14,34 +14,13 @@ class Migration(SchemaMigration):
             ('filename', self.gf('django.db.models.fields.CharField')(max_length=255)),
             ('document', self.gf('django.db.models.fields.files.FileField')(max_length=100)),
             ('upload_date', self.gf('django.db.models.fields.DateTimeField')(auto_now_add=True, blank=True)),
-            ('is_image', self.gf('django.db.models.fields.BooleanField')(default=False)),
         ))
         db.send_create_signal('upload', ['File'])
-
-        # Adding model 'FileSet'
-        db.create_table('upload_fileset', (
-            ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
-        ))
-        db.send_create_signal('upload', ['FileSet'])
-
-        # Adding M2M table for field files on 'FileSet'
-        db.create_table('upload_fileset_files', (
-            ('id', models.AutoField(verbose_name='ID', primary_key=True, auto_created=True)),
-            ('fileset', models.ForeignKey(orm['upload.fileset'], null=False)),
-            ('file', models.ForeignKey(orm['upload.file'], null=False))
-        ))
-        db.create_unique('upload_fileset_files', ['fileset_id', 'file_id'])
 
 
     def backwards(self, orm):
         # Deleting model 'File'
         db.delete_table('upload_file')
-
-        # Deleting model 'FileSet'
-        db.delete_table('upload_fileset')
-
-        # Removing M2M table for field files on 'FileSet'
-        db.delete_table('upload_fileset_files')
 
 
     models = {
@@ -50,13 +29,7 @@ class Migration(SchemaMigration):
             'document': ('django.db.models.fields.files.FileField', [], {'max_length': '100'}),
             'filename': ('django.db.models.fields.CharField', [], {'max_length': '255'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'is_image': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'upload_date': ('django.db.models.fields.DateTimeField', [], {'auto_now_add': 'True', 'blank': 'True'})
-        },
-        'upload.fileset': {
-            'Meta': {'object_name': 'FileSet'},
-            'files': ('django.db.models.fields.related.ManyToManyField', [], {'to': "orm['upload.File']", 'symmetrical': 'False'}),
-            'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'})
         }
     }
 
