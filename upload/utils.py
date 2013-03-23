@@ -76,11 +76,11 @@ class MultiuploadAuthenticator(object):
                 # created by another form (e.g. to use another form
                 # class's more relaxed file size/mime type
                 # restrictions)
-                if (token.form_class_name !=
-                        self.form.__class__.__name__ or
-                        token.form_module !=
-                        self.form.__class__.__module__ or
-                        token.field_label != label):
+                if (
+                    token.form_class !=
+                    '.'.join((self.form.__module__,
+                              self.form.__class__.__name__))
+                ):
                     raise SuspiciousOperation(
                             "User modified hidden field %s of %s.%s" % (
                                 label,
@@ -108,19 +108,8 @@ class MultiuploadAuthenticator(object):
                 self.patch_form_validation()
         # form is not bound. A GET request
         else:
-            for label, field in self.multiuploader_fields.iteritems():
-                # if a dyanmic initial value dict was passed to the form
-                # class (perhaps by a modelform), that will have precedence
-                # over the field intial, so will need that pks list
-                try:
-                    pks = self.form.initial[label]
-                    uid = field.uid
-                # No dynamic initial value on form
-                except KeyError:
-                    uid, pks = field.initial
-                # TODO: If were passing self.form to make_token, make_token
-                # should take care of getting pks and uid
-                self.tokens.append(make_token(uid, pks, self.form, label))
+            for field_label in self.multiuploader_fields.iterkeys():
+                self.tokens.append(make_token(self.form, field_label))
             self.update_response()
 
     def update_response(self):

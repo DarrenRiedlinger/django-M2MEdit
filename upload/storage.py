@@ -33,37 +33,40 @@ FileSetToken = recordtype('FileSetToken', [
     'pks',  # pks selected by this app
     'original_pks',  # pks when parent form was rendered
     'field_label',
-    'form_class_name',
-    'form_module',
-    'model_class_name',
-    'model_module',
-    ('max_filesize', None),
-    ('min_filesize', None),
-    ('max_files', None),
-    ('mimetypes', None),
+    'form_class',
+    'model_class',
 ])
 
 
-def make_token(uid, pks, form, field_label):
+def make_token(form, field_label):
     """
     Convencience method for constructing a FileSetToken
     """
 
     field = form.fields[field_label]
+    # if a dyanmic initial value dict was passed to the form
+    # class (perhaps by a modelform), that will have precedence
+    # over the field intial, so will need that pks list
+    try:
+        pks = form.initial[field_label]
+        uid = field.uid
+    # No dynamic initial value on form
+    except KeyError:
+        uid, pks = field.initial
+    # TODO: If were passing self.form to make_token, make_token
+    # should take care of getting pks and uid
 
     return FileSetToken(
         uid=uid,
         pks=pks,
         original_pks=pks,
         field_label=field_label,
-        form_class_name=form.__class__.__name__,
-        form_module=form.__module__,
-        model_class_name=field.queryset.model.__name__,
-        model_module=field.queryset.model.__module__,
-        max_filesize=getattr(field, 'max_filesize', None),
-        min_filesize=getattr(field, 'min_filesize', None),
-        max_files=getattr(field, 'max_files', None),
-        mimetypes=getattr(field, 'mimetypes', None),
+        form_class='.'.join(
+            (form.__module__, form.__class__.__name__)
+        ),
+        model_class='.'.join(
+            (field.queryset.model.__module__, field.queryset.model.__name__)
+        ),
     )
 
 

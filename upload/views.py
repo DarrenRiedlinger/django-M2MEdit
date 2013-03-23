@@ -40,12 +40,14 @@ class M2MEdit(CreateView):
         return keywords
 
     def get_forms(self):
-        module = __import__(self.token.model_module,
-                            fromlist=[self.token.model_class_name])
-        self.model = getattr(module, self.token.model_class_name)
+        module, klass = self.token.model_class.rsplit('.', 1)
+        module = __import__(module, fromlist=[klass])
+        self.model = getattr(module, klass)
         CreationForm = self.get_form_class()
-        creation_form = CreationForm(**self.get_form_kwargs(prefix='creation',
-                                                            empty_permitted=True))
+        creation_form = CreationForm(
+            **self.get_form_kwargs(prefix='creation',
+                                   empty_permitted=True)
+        )
         if self.token.pks:
             list_form = self.get_list_form()
         else:

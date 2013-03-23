@@ -23,10 +23,8 @@ BASE_TOKEN = FileSetToken(
         pks=[],
         original_pks=[],
         field_label='attachments',
-        form_class_name='SimpleRequiredForm',
-        form_module='upload.tests.forms',
-        model_class_name='File',
-        model_module='upload.models',
+        form_class='upload.tests.forms.SimpleRequiredForm',
+        model_class='upload.models.File',
         )
 
 
