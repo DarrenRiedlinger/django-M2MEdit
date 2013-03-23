@@ -81,6 +81,7 @@ class MultiUploaderIframeWidget(forms.widgets.MultiWidget):
         return u'<div class="Multiupload">%s</div>' % u''.join(rendered_widgets)
 
 
+# Not currently used.
 class TableSelectMultiple(SelectMultiple):
     """
     Provides selection of items via checkboxes, with a table row

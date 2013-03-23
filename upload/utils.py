@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.core.exceptions import SuspiciousOperation
 
-from upload.fields import MultiUploaderField
+from upload.forms import MultiUploaderField
 from upload.storage import make_token
 
 

@@ -8,7 +8,7 @@ from django.core.exceptions import SuspiciousOperation
 from django.test import TestCase
 from django.test.client import RequestFactory
 from django.test.utils import override_settings
-from upload.fields import MultiUploaderField
+from upload.forms import MultiUploaderField
 from upload.models import File
 from upload.storage import TokenError, FileSetToken
 from upload.utils import MultiuploadAuthenticator

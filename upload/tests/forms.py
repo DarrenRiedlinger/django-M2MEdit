@@ -1,5 +1,5 @@
 from django import forms
-from upload.fields import MultiUploaderField
+from upload.forms import MultiUploaderField
 from upload.models import File
 
 

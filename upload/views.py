@@ -24,10 +24,6 @@ class M2MEdit(CreateView):
     template_name = 'upload_form.html'
     missing_cookie_template = 'missing_cookie.html'
     storage_class = STORAGE_CLASS
-    #def get_form_class(self):
-    #    if self.object:
-    #        return partial(FileSetForm, self.object.pk)
-    #    return partial(FileSetForm, None)
 
     def get_sucess_url(self):
         # There is no success url, we just redirect back to GET

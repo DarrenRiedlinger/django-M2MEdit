@@ -1,5 +1,5 @@
 from django.db import models
-from upload.fields import MultiUploaderField
+from upload.forms import MultiUploaderField
 from django.utils.translation import ugettext_lazy as _
 
 
