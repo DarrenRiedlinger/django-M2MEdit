@@ -113,7 +113,8 @@ class CookieStorage(BaseStorage):
     """
     Stores/loads fileset auth tokesn from a cookie
     """
-    raise NotImplementedError
+    def __init__(self, request, *args, **kwargs):
+        raise NotImplementedError
 
     # Seconds of inactivity between request and response
     max_cookie_age = getattr(settings, 'MULTIUPLOADER_SESSION_TIMEOUT', 300)
